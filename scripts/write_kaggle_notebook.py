@@ -86,7 +86,31 @@ for root in glob.glob("/kaggle/input/*"):
 
 assert CORPUS, "No manifest.jsonl found. Is the dataset attached?"
 print("corpus:", CORPUS)
-print("pages :", sum(1 for _ in open(f"{CORPUS}/manifest.jsonl")))
+
+# Verify every page the manifest promises is actually THERE. A partial upload
+# leaves the manifest intact and the images missing, so the count alone looks
+# fine and training dies hours later on a FileNotFoundError.
+import json
+rows = [json.loads(l) for l in open(f"{CORPUS}/manifest.jsonl") if l.strip()]
+missing = [r for r in rows if not os.path.exists(os.path.join(CORPUS, r["image"]))]
+
+print(f"manifest rows : {len(rows):,}")
+print(f"images present: {len(rows)-len(missing):,}")
+print(f"images MISSING: {len(missing):,}")
+
+if missing:
+    print("
+Examples:", [m["image"] for m in missing[:3]])
+    raise SystemExit(
+        f"
+{len(missing):,} of {len(rows):,} pages are missing from the dataset.
+"
+        "The upload is incomplete. Re-upload data/synthetic.zip and let it finish
+"
+        "before training - a partial corpus fails hours in, not now."
+    )
+print("
+OK: every manifest page is present.")
 """),
     md("""
 ## 2. Clone the code and install
