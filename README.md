@@ -163,7 +163,8 @@ say.
 - [docs/MODEL_CARD.md](docs/MODEL_CARD.md) — intended use, limitations, blank results
 - [docs/DATASHEET.md](docs/DATASHEET.md) — corpus composition, and its errata
 - [docs/PRIVACY.md](docs/PRIVACY.md) — the four barriers
-- [notebooks/train_colab.ipynb](notebooks/train_colab.ipynb) — free-tier training
+- [notebooks/train_kaggle.ipynb](notebooks/train_kaggle.ipynb) — training on Kaggle (30 GPU-h/week, 12h sessions)
+- [notebooks/train_colab.ipynb](notebooks/train_colab.ipynb) — training on Colab
 
 ## Licensing
 
