@@ -20,7 +20,12 @@ if (Get-Command uv -ErrorAction SilentlyContinue) {
 
 function Invoke-Uv {
     param([string[]]$Arguments)
-    & $uv[0] @($uv[1..($uv.Count - 1)] + $Arguments)
+    # Note: $uv[1..($uv.Count - 1)] is WRONG when $uv has one element - PowerShell
+    # reads 1..0 as a descending range and yields @($null, $uv[0]).
+    $exe = $uv[0]
+    $prefix = @()
+    if ($uv.Count -gt 1) { $prefix = $uv[1..($uv.Count - 1)] }
+    & $exe @($prefix + $Arguments)
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 
