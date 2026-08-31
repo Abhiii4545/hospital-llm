@@ -30,6 +30,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 
@@ -168,6 +169,26 @@ def create_app(extractor: Extractor | None = None) -> FastAPI:
         version="2.0.0.dev0",
     )
 
+    # The review UI runs on its own origin. In production set
+    # RECKON_CORS_ORIGINS to an explicit comma-separated list; the permissive
+    # localhost regex below is a DEVELOPMENT convenience only, and exists
+    # because the dev server's port is not knowable in advance.
+    configured = os.environ.get("RECKON_CORS_ORIGINS")
+    if configured:
+        application.add_middleware(
+            CORSMiddleware,
+            allow_origins=[o.strip() for o in configured.split(",") if o.strip()],
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
+    else:
+        application.add_middleware(
+            CORSMiddleware,
+            allow_origin_regex=r"http://(localhost|127\.0\.0\.1):\d+",
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
+
     @application.get("/health")
     def health() -> dict:
         meta = run_metadata()
@@ -253,6 +274,107 @@ def create_app(extractor: Extractor | None = None) -> FastAPI:
             "latency_seconds": round(elapsed, 3),
         }
 
+    @application.get("/sample")
+    def sample_page(index: int = 0):
+        """A synthetic corpus page, so the demo is self-contained.
+
+        SYNTHETIC ONLY. `data/real/` is never served, and never will be - the
+        path is hard-coded to the synthetic corpus rather than parameterised,
+        so no request can walk out of it.
+        """
+        from fastapi.responses import FileResponse
+
+        pages = sorted(Path("data/synthetic/pages").glob("*_p00.png"))
+        if not pages:
+            raise HTTPException(
+                404, "No synthetic corpus found. Build it with: make corpus"
+            )
+        chosen = pages[index % len(pages)]
+        return FileResponse(chosen, media_type="image/png", filename=chosen.name)
+
+    @application.get("/sample/count")
+    def sample_count() -> dict:
+        pages = sorted(Path("data/synthetic/pages").glob("*_p00.png"))
+        return {"available": len(pages)}
+
+    @application.post("/ocr")
+    async def ocr_lines(file: UploadFile = File(...)) -> dict:
+        """OCR a page and return text boxes, for the review UI to highlight with.
+
+        PRESENTATION ONLY, same as align_for_display. Donut emits no boxes, so
+        these coordinates come from a separate OCR pass. They never feed the
+        model and never touch a metric.
+        """
+        try:
+            from reckon.models.baselines.ocr_rapid import RapidOcrBackend
+        except ImportError as error:
+            raise HTTPException(
+                503, "OCR extra not installed: uv sync --extra ocr"
+            ) from error
+
+        from PIL import Image
+
+        image = Image.open(await_bytes(await file.read())).convert("RGB")
+        engine = _shared_ocr(RapidOcrBackend)
+        results, _ = engine._get_engine()(__import__("numpy").array(image))
+        boxes = []
+        for box, text, score in (results or []):
+            xs = [p[0] for p in box]
+            ys = [p[1] for p in box]
+            boxes.append({
+                "text": text,
+                "score": round(float(score), 3),
+                "box": [int(min(xs)), int(min(ys)), int(max(xs)), int(max(ys))],
+            })
+        return {"width": image.width, "height": image.height, "lines": boxes}
+
+    @application.post("/extract-heuristic")
+    async def extract_heuristic(file: UploadFile = File(...)) -> dict:
+        """Extract with B1 (OCR + heuristics). Needs no trained model.
+
+        This is what the demo runs today. Its measured accuracy is in
+        docs/RESULTS.md and it is NOT good enough for unattended use - median
+        rupee error is five figures. It is here so the review workflow is
+        exercisable end to end before a model exists, not as a product.
+        """
+        try:
+            from reckon.models.baselines.b1_ocr_heuristic import B1OcrHeuristic
+            from reckon.models.baselines.ocr_rapid import RapidOcrBackend
+        except ImportError as error:
+            raise HTTPException(
+                503, "OCR extra not installed: uv sync --extra ocr"
+            ) from error
+
+        import numpy as np
+        from PIL import Image
+
+        image = Image.open(await_bytes(await file.read())).convert("RGB")
+        started = time.perf_counter()
+        engine = B1OcrHeuristic(backend=_shared_ocr(RapidOcrBackend))
+        document = engine.extract(np.array(image))
+        elapsed = time.perf_counter() - started
+
+        assembled = assemble([PageFragment(
+            page_index=0,
+            hospital=document.hospital, patient=document.patient,
+            insurance=document.insurance, totals=document.totals,
+            line_items=document.line_items,
+        )])
+        return {
+            "engine": "B1 (OCR + heuristics)",
+            "warning": (
+                "Heuristic extraction. Measured line-item F1 0.372 and median "
+                "error Rs 45,367 on synthetic-test - every field needs review."
+            ),
+            "document": assembled.document.model_dump(),
+            "reconciliation": {
+                "balanced": assembled.report.balanced,
+                "complete": assembled.report.complete,
+                "flags": assembled.report.flags,
+            },
+            "latency_seconds": round(elapsed, 2),
+        }
+
     @application.post("/corrections")
     def log_correction(request: CorrectionRequest) -> dict:
         """Log a human correction as future training data.
@@ -279,11 +401,22 @@ def create_app(extractor: Extractor | None = None) -> FastAPI:
     def root() -> JSONResponse:
         return JSONResponse({
             "service": "RECKON v2",
-            "endpoints": ["/health", "/adjudicate", "/extract", "/review",
+            "endpoints": ["/health", "/adjudicate", "/extract",
+                          "/extract-heuristic", "/ocr", "/review",
                           "/corrections", "/docs"],
         })
 
     return application
+
+
+_OCR_SINGLETON: dict[str, Any] = {}
+
+
+def _shared_ocr(factory):
+    """One OCR engine per process. Constructing it per request costs seconds."""
+    if "engine" not in _OCR_SINGLETON:
+        _OCR_SINGLETON["engine"] = factory()
+    return _OCR_SINGLETON["engine"]
 
 
 def await_bytes(data: bytes):

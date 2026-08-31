@@ -177,18 +177,48 @@ class B1OcrHeuristic:
     # -- header fields ---------------------------------------------------
 
     def _header_fields(self, lines: Sequence[OcrLine]) -> dict[str, str]:
-        """Label/value pairs, fuzzy-matched, taking the first hit per field."""
-        found: dict[str, str] = {}
+        """Label/value pairs, keeping the BEST-scoring candidate per field.
+
+        First-match-wins was wrong. Two passes generate candidates - adjacent
+        column chunks, and label/value inside one chunk - and the second pass
+        splits "Patient Name" into ("Patient", "Name"), which scores 100 against
+        the alias "patient". On a real page that produced `age` = "Patient Name"
+        and `gross_amount` = "Date": a weak candidate arriving first beat the
+        right one arriving second.
+
+        A candidate whose VALUE is itself a strong label is also rejected -
+        "Date" is a column header, not a total.
+        """
+        best: dict[str, tuple[int, str]] = {}
         for line in lines:
             for label, value in self._pairs(line.text):
+                cleaned = value.strip().strip(":").strip()
+                if not cleaned or cleaned in {"-", "--", "N/A"}:
+                    continue
                 for path, aliases in _ALIASES.items():
-                    if path in found:
+                    score = _best_alias(label, aliases)
+                    if score < _FUZZ_FLOOR:
                         continue
-                    if _best_alias(label, aliases) >= _FUZZ_FLOOR:
-                        cleaned = value.strip().strip(":").strip()
-                        if cleaned and cleaned not in {"-", "--", "N/A"}:
-                            found[path] = cleaned
-        return found
+                    if self._looks_like_a_label(cleaned):
+                        continue
+                    if path not in best or score > best[path][0]:
+                        best[path] = (score, cleaned)
+        return {path: value for path, (_, value) in best.items()}
+
+    @staticmethod
+    def _looks_like_a_label(value: str) -> bool:
+        """True when a candidate VALUE is really another field's label.
+
+        Guards against reading the next column header as the value, which is how
+        `gross_amount` became the string "Date".
+        """
+        for aliases in _ALIASES.values():
+            if _best_alias(value, aliases) >= 92:
+                return True
+        for aliases in _COLUMN_ALIASES.values():
+            if _best_alias(value, aliases) >= 92:
+                return True
+        return False
 
     def _pairs(self, text: str) -> list[tuple[str, str]]:
         """Every label/value pair on a line.
