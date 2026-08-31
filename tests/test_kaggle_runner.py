@@ -122,10 +122,15 @@ def test_every_code_cell_is_valid_python(notebook: str) -> None:
         if cell["cell_type"] != "code":
             continue
         source = "".join(cell["source"])
-        stubbed = "\n".join(
-            "pass" if line.strip().startswith(("!", "%")) else line
-            for line in source.splitlines()
-        )
+        # Indentation must be preserved. A magic inside an `if` block replaced
+        # by a bare `pass` at column 0 leaves the block empty, and the test then
+        # reports a syntax error the notebook does not actually have.
+        def stub(line: str) -> str:
+            if line.strip().startswith(("!", "%")):
+                return line[: len(line) - len(line.lstrip())] + "pass"
+            return line
+
+        stubbed = "\n".join(stub(line) for line in source.splitlines())
         try:
             ast.parse(stubbed)
         except SyntaxError as error:                       # pragma: no cover
