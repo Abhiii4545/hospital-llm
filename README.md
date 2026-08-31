@@ -18,17 +18,20 @@ produced a deduction.
 > ### The state of this project, stated plainly
 >
 > **The model is not trained.** The corpus, the evaluation harness, the training
-> code, the adjudication engine and the serving layer are complete and tested —
-> 500+ tests, 8 enforced import contracts. What does not exist is a set of
-> weights, because training needs a GPU session that has not been run.
+> code, the adjudication engine, the API and the review UI are complete and
+> tested — 580 tests, 8 enforced import contracts. What does not exist is a set
+> of weights, because training needs a GPU session that has not been run.
 >
-> **There is therefore no results table, and the synthetic-to-real gap — the
-> headline number this project is built to produce — is unmeasured.** Every
-> performance cell in the docs reads `not measured`. Placeholder numbers would be
-> worse than blanks: blanks are obviously incomplete, placeholders get quoted.
+> **There are real numbers, but only for the untrained systems.** See
+> [docs/RESULTS.md](docs/RESULTS.md): OCR + heuristics reaches 0.372 line-item F1
+> on real OCR'd images and misadjudicates the median claim by **₹45,367**.
+> Off-the-shelf Donut-CORD zero-shot is worse, at 0.276. Every RECKON v2 cell
+> reads `not trained`.
 >
-> What runs today with no GPU: the whole adjudication path, the evaluation
-> harness against two baselines, and the corpus generator.
+> **The synthetic-to-real gap — the headline number this project is built to
+> produce — is unmeasured**, because `real-dev` and `real-test` do not exist. No
+> download creates them: public insurer material is claim *forms* with
+> placeholder values, not itemised bills ([datasheet](docs/DATASHEET.md)).
 
 ---
 
@@ -42,7 +45,9 @@ produced a deduction.
 | **Training code** | Two Donut heads, resumable to ≤200 steps, sized for a free T4. Written and tested; **not run**. |
 | **Adjudication** | IRDAI List I as YAML with clause citations; room-rent capping with proportionate deduction; every deduction traceable. **Runs today.** |
 | **Serving** | FastAPI. `/adjudicate` works with no model. ONNX export variants and a latency table that refuses to omit its accuracy column. |
-| **Not built** | B2 (LiLT baseline), the real-document corpus, a trained model — and therefore every number. |
+| **Review UI** | Next.js 16 + React 19. Page view with OCR-backed field highlighting, editable fields, adjudication audit trail, correction logging. |
+| **Redaction** | HMAC-keyed surrogates preserving length and character class, so page geometry survives. Key refused if it lives in the repo. |
+| **Not built** | A **trained model**, the real-document corpus, and B2's trained weights (its label scheme and decoder are tested). |
 
 ## Try the part that works
 
@@ -116,10 +121,18 @@ Kept because they are the honest part of the record.
 - **The first `heavy` augmentation bucket produced pages no human could read.**
   That is label noise, not difficulty: 15% of the corpus would have been teaching
   the model to hallucinate text that was not there.
-- **The legibility metric written to catch that was itself wrong.** `p50 − p5` on
-  a 95%-white page measures histogram spread, and ranked the clean render *below*
-  a degraded one. Now `p90 − p2` plus Laplacian variance, calibrated against a
-  deliberately destroyed control that a test requires them to reject.
+- **The legibility metric written to catch that was wrong twice.** First
+  `p50 − p5`, which measures histogram spread on a mostly-white page and ranked
+  the clean render *below* a degraded one. Then `p90 − p2`, which looked fine on a
+  dense page and, over the first full 10k build, rejected **36% of the clean
+  bucket** — scoring a perfectly legible sparse page *below* a deliberately
+  destroyed control. Both measured ink density, not legibility. Now Otsu class
+  separation, and the corpus was regenerated.
+- **A field metric that credited a do-nothing system.** Zero-shot Donut-CORD
+  scored 1.00 on `totals.amount_in_words` having extracted nothing — that is
+  exactly the rate at which the field is absent, and "correct absence" counted as
+  correct. `accuracy_when_present` now sits beside it and cannot be earned by
+  abstaining.
 - **B0 does not fail silently on unfamiliar layouts — it fails silently *wrong*.**
   On pipe-delimited tables its fallback regex still matches, dragging `|` into the
   description and picking up an unrelated number as the amount. The bill comes
@@ -145,6 +158,7 @@ say.
 
 ## Documentation
 
+- [docs/RESULTS.md](docs/RESULTS.md) — measured numbers for the untrained systems
 - [docs/DECISIONS.md](docs/DECISIONS.md) — every non-obvious decision, with reasons
 - [docs/MODEL_CARD.md](docs/MODEL_CARD.md) — intended use, limitations, blank results
 - [docs/DATASHEET.md](docs/DATASHEET.md) — corpus composition, and its errata
