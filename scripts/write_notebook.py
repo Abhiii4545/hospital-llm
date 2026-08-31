@@ -200,8 +200,7 @@ def main() -> None:
     # Trailing newline: without it the end-of-file-fixer hook rewrites the
     # notebook on every commit, so a regenerated file never matches the
     # committed one.
-    OUT.write_text(json.dumps(NOTEBOOK, indent=1) + "
-", encoding="utf-8")
+    OUT.write_text(json.dumps(NOTEBOOK, indent=1) + "\n", encoding="utf-8")
     print(f"wrote {OUT} ({len(CELLS)} cells)")
 
 
