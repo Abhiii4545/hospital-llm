@@ -334,6 +334,49 @@ def test_clean_render_passes_the_guards_comfortably() -> None:
     assert edge_energy(page) > MIN_EDGE_ENERGY
 
 
+def _sparse_page() -> np.ndarray:
+    """A nursing-home bill: four line items on an otherwise blank A4 page."""
+    page = np.full((1123, 794, 3), 255, dtype=np.uint8)
+    for y in range(120, 220, 24):
+        page[y:y + 7, 60:420] = 25
+    return page
+
+
+def test_a_sparse_but_perfectly_legible_page_passes() -> None:
+    """The regression that cost 967 pages of the first corpus build.
+
+    Fixed-percentile contrast measures ink DENSITY, not legibility. On a page
+    that is 99% paper even the 2nd percentile is paper, so `p90 - p2` collapsed
+    and rejected 36% of the CLEAN bucket. Otsu finds the split from the image, so
+    a 1%-ink page and a 16%-ink page are judged on the same basis.
+    """
+    sparse = _sparse_page()
+    assert (sparse.mean(axis=2) < 128).mean() < 0.02, "fixture is not sparse"
+    assert is_legible(sparse)
+    assert ink_contrast(sparse) > MIN_LEGIBLE_CONTRAST * 2
+
+
+def test_sparse_and_dense_legible_pages_score_comparably() -> None:
+    """The property the old metric lacked: independence from ink density."""
+    sparse, dense = _sparse_page(), _blank_page()
+    assert abs(ink_contrast(sparse) - ink_contrast(dense)) < 60
+
+
+def test_a_destroyed_page_scores_below_every_legible_one() -> None:
+    """The old metric scored a real sparse page BELOW the destroyed control."""
+    from PIL import Image, ImageFilter
+
+    dense = _blank_page()
+    blurred = np.array(
+        Image.fromarray(dense).filter(ImageFilter.GaussianBlur(4))
+    ).astype(float)
+    destroyed = (110 + (blurred / 255.0) * 40).astype(np.uint8)
+
+    assert not is_legible(destroyed)
+    assert ink_contrast(destroyed) < ink_contrast(_sparse_page())
+    assert ink_contrast(destroyed) < ink_contrast(dense)
+
+
 def test_augmentation_never_raises_on_odd_input() -> None:
     """One bad page must not kill a 10,000-page corpus run."""
     for shape in ((40, 40, 3), (1123, 794, 3), (200, 1400, 3)):

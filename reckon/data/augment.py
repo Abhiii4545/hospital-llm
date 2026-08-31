@@ -42,10 +42,10 @@ __all__ = ["QUALITY_BUCKETS", "QUALITY_WEIGHTS", "build_pipeline", "augment_page
 #: is not there. These are the automated guards that stop it regressing silently,
 #: and both are asserted in the test suite.
 #:
-#: Calibrated against a deliberately destroyed control (heavy blur, contrast
-#: squashed into a 40-level band), which scores 8.8 and 0.0 respectively, versus
-#: the worst real `heavy` output at 151 and 849.
-MIN_LEGIBLE_CONTRAST = 60.0   # paper level minus ink level
+#: Calibrated over the real 10,212-page corpus: genuine pages score 165-215 and
+#: a deliberately destroyed control scores 31. Threshold sits well below every
+#: real page and well above the control.
+MIN_LEGIBLE_CONTRAST = 80.0   # Otsu class separation: paper mean minus ink mean
 MIN_EDGE_ENERGY = 200.0       # variance of the Laplacian: is there still an edge?
 
 #: Ordered worst-to-best so a report table reads naturally.
@@ -201,17 +201,49 @@ def augment_page(
     return out, dict(failures)
 
 
-def ink_contrast(image: np.ndarray) -> float:
-    """Paper level minus ink level.
+def _otsu_threshold(grey: np.ndarray) -> int:
+    """Otsu's threshold: the grey level that best separates ink from paper."""
+    histogram = np.bincount(grey.reshape(-1), minlength=256).astype(float)
+    total = histogram.sum()
+    if total == 0:
+        return 128
+    weight = np.cumsum(histogram)
+    mean = np.cumsum(histogram * np.arange(256))
+    denominator = weight * (total - weight)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        between = np.where(
+            denominator > 0,
+            (mean[-1] * weight / total - mean) ** 2 / denominator,
+            0.0,
+        )
+    return int(np.argmax(between))
 
-    A first version of this used p50 - p5 and was simply wrong: on a page that is
-    95% white paper, the 5th percentile is still paper, so it measured histogram
-    spread and ranked a clean render BELOW a heavily degraded one. p90 is the
-    paper and p2 is the ink.
+
+def ink_contrast(image: np.ndarray) -> float:
+    """Separation between the ink and paper classes, found by Otsu's method.
+
+    Two earlier versions of this were wrong, both in the same way: they used
+    FIXED percentiles, which measure ink DENSITY rather than legibility.
+
+    * `p50 - p5` ranked a clean render below a heavily degraded one.
+    * `p90 - p2` looked right on a dense page but failed on a sparse one. On a
+      nursing-home bill with four line items, 99% of pixels are paper, so even
+      the 2nd percentile is paper and the score collapses. Measured over the real
+      corpus it rejected 36% of the CLEAN bucket, and scored a perfectly legible
+      sparse page (28.9) BELOW the deliberately destroyed control (36.0) - it
+      could not do the one job it was calibrated for.
+
+    Otsu finds the split point from the image itself, so a page with 1% ink and a
+    page with 16% ink are judged on the same basis: how far apart ink and paper
+    actually are.
     """
-    grey = image if image.ndim == 2 else image.mean(axis=2)
-    flat = grey.reshape(-1)
-    return float(np.percentile(flat, 90) - np.percentile(flat, 2))
+    grey = (image if image.ndim == 2 else image.mean(axis=2)).astype(np.uint8)
+    threshold = _otsu_threshold(grey)
+    ink = grey[grey <= threshold]
+    paper = grey[grey > threshold]
+    if ink.size == 0 or paper.size == 0:
+        return 0.0
+    return float(paper.mean() - ink.mean())
 
 
 def edge_energy(image: np.ndarray) -> float:
