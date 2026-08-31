@@ -155,16 +155,25 @@ def _per_field_table(results: Sequence[SystemResult]) -> str:
     paths = list(results[0].fields)
     headers = ["field"]
     for r in results:
-        headers += [f"{r.name} raw", f"{r.name} norm", f"{r.name} CER"]
+        headers += [f"{r.name} raw", f"{r.name} norm", f"{r.name} present-only",
+                    f"{r.name} n"]
 
     rows = []
     for path in paths:
         row = [f"`{path}`"]
         for r in results:
             score = r.fields[path]
-            row += [_pct(score.exact), _pct(score.normalized_exact), f"{score.cer:.3f}"]
+            row += [_pct(score.exact), _pct(score.normalized_exact),
+                    _pct(score.accuracy_when_present), str(score.truth_present)]
         rows.append(row)
-    return _table(headers, rows)
+    table = _table(headers, rows)
+    return table + (
+        "\n**present-only** is accuracy over just the documents where the field "
+        "actually has a value, with `n` its support. The `norm` column counts a "
+        "correct absence as correct - which is right, but means a system that "
+        "extracts NOTHING scores the absence rate. Where the two diverge, the "
+        "lower one is the real extraction ability.\n"
+    )
 
 
 def _line_item_table(results: Sequence[SystemResult]) -> str:

@@ -189,11 +189,28 @@ class FieldScore:
     pred_present: int
     misses: int              # truth had a value, prediction did not
     hallucinations: int      # truth had none, prediction invented one
+    correct_when_present: int = 0
 
     @property
     def formatting_gap(self) -> float:
         """How much of the raw error was only formatting."""
         return self.normalized_exact - self.exact
+
+    @property
+    def accuracy_when_present(self) -> float:
+        """Accuracy over ONLY the documents where the field actually has a value.
+
+        `normalized_exact` counts a correct absence as correct, which is right -
+        reporting that a field is not on the page IS the right answer. But as a
+        headline it lets a system that extracts NOTHING look competent: scoring
+        zero-shot Donut-CORD produced 1.00 on `totals.amount_in_words` and 0.65
+        on `insurance.employee_id`, which turned out to be exactly the rate at
+        which those fields are absent. It had extracted neither.
+
+        This number cannot be earned by abstaining. Report both: the gap between
+        them is how much of a score is genuine extraction.
+        """
+        return self.correct_when_present / self.truth_present if self.truth_present else 0.0
 
 
 def score_fields(
@@ -207,6 +224,7 @@ def score_fields(
     for path in FIELD_PATHS:
         exact = norm_exact = cer_total = 0.0
         truth_present = pred_present = misses = hallucinations = 0
+        correct_present = 0
 
         for pair, (npred, ntruth) in zip(pairs, normalized):
             raw_p, raw_t = _get(pair.pred, path), _get(pair.truth, path)
@@ -214,10 +232,13 @@ def score_fields(
             cer_total += _cer(raw_p, raw_t)
 
             norm_p, norm_t = _get(npred, path), _get(ntruth, path)
-            norm_exact += 1.0 if norm_p == norm_t else 0.0
+            matched = norm_p == norm_t
+            norm_exact += 1.0 if matched else 0.0
 
             if raw_t is not None:
                 truth_present += 1
+                if matched:
+                    correct_present += 1
                 if raw_p is None:
                     misses += 1
             elif raw_p is not None:
@@ -236,6 +257,7 @@ def score_fields(
             pred_present=pred_present,
             misses=misses,
             hallucinations=hallucinations,
+            correct_when_present=correct_present,
         )
     return scores
 

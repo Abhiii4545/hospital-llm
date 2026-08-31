@@ -405,3 +405,56 @@ def test_cache_keys_on_doc_id_not_position() -> None:
     second = score_business([a, b], cache=cache)
     assert first == second
     assert first.median_error == score_business([a, b]).median_error
+
+
+# --------------------------------------------------------------------------
+# the metric that cannot be earned by abstaining
+# --------------------------------------------------------------------------
+
+def test_a_system_that_extracts_nothing_scores_the_absence_rate() -> None:
+    """The flaw that scoring zero-shot Donut-CORD exposed.
+
+    `normalized_exact` counts a correct absence as correct - right in principle,
+    but it means a system predicting nothing scores exactly the rate at which the
+    field happens to be absent. Donut-CORD scored 1.00 on `amount_in_words` and
+    0.65 on `employee_id` that way, having extracted neither.
+    """
+    empty = RawDocument()
+    pairs = [
+        pair(empty, make_raw(hospital_name="Apollo"), "d1"),
+        pair(empty, make_raw(hospital_name=None), "d2"),
+        pair(empty, make_raw(hospital_name=None), "d3"),
+        pair(empty, make_raw(hospital_name=None), "d4"),
+    ]
+    score = score_fields(pairs)["hospital.name"]
+
+    assert score.normalized_exact == 0.75          # flattered by 3 absences
+    assert score.accuracy_when_present == 0.0      # the honest number
+    assert score.truth_present == 1
+
+
+def test_present_only_accuracy_rewards_real_extraction() -> None:
+    good = [pair(make_raw(hospital_name="Apollo"),
+                 make_raw(hospital_name="Apollo"), f"d{i}") for i in range(3)]
+    score = score_fields(good)["hospital.name"]
+    assert score.accuracy_when_present == 1.0
+    assert score.truth_present == 3
+
+
+def test_present_only_is_zero_when_the_field_never_appears() -> None:
+    """No support means no claim either way, not a free 100%."""
+    pairs = [pair(make_raw(hospital_name=None), make_raw(hospital_name=None), "d1")]
+    score = score_fields(pairs)["hospital.name"]
+    assert score.normalized_exact == 1.0
+    assert score.truth_present == 0
+    assert score.accuracy_when_present == 0.0
+
+
+def test_report_explains_the_divergence() -> None:
+    from reckon.eval.report import build_report, evaluate_system
+
+    empty = RawDocument()
+    pairs = [pair(empty, make_raw(), "d1")]
+    text = build_report([evaluate_system("nothing", pairs)], dataset_name="t")
+    assert "present-only" in text
+    assert "extracts NOTHING" in text
