@@ -1,0 +1,83 @@
+[importlinter]
+root_package = reckon
+
+# Layer separation is enforced mechanically, not by convention. Section 7 of the
+# brief names three forbidden directions; contracts 3-5 encode exactly those.
+# Contracts 1, 2, 6 and 7 are additions that keep the leaves pure and keep the
+# evaluation harness independent of the things it is meant to judge.
+
+[importlinter:contract:1]
+name = Schema is a leaf and imports nothing else in reckon
+type = forbidden
+source_modules =
+    reckon.schema
+forbidden_modules =
+    reckon.normalize
+    reckon.provenance
+    reckon.data
+    reckon.models
+    reckon.training
+    reckon.eval
+    reckon.adjudicate
+    reckon.serve
+
+[importlinter:contract:2]
+name = Normalize depends on the schema and nothing else
+type = forbidden
+source_modules =
+    reckon.normalize
+forbidden_modules =
+    reckon.provenance
+    reckon.data
+    reckon.models
+    reckon.training
+    reckon.eval
+    reckon.adjudicate
+    reckon.serve
+
+[importlinter:contract:3]
+name = Data layer does not import training, serving or models
+type = forbidden
+source_modules =
+    reckon.data
+forbidden_modules =
+    reckon.training
+    reckon.serve
+    reckon.models
+
+[importlinter:contract:4]
+name = Training does not import serving
+type = forbidden
+source_modules =
+    reckon.training
+forbidden_modules =
+    reckon.serve
+
+[importlinter:contract:5]
+name = Serving does not import data generation or training
+type = forbidden
+source_modules =
+    reckon.serve
+forbidden_modules =
+    reckon.data
+    reckon.training
+
+[importlinter:contract:6]
+name = Adjudication is deterministic and model-free
+type = forbidden
+source_modules =
+    reckon.adjudicate
+forbidden_modules =
+    reckon.data
+    reckon.models
+    reckon.training
+    reckon.serve
+
+[importlinter:contract:7]
+name = Eval does not import training or serving
+type = forbidden
+source_modules =
+    reckon.eval
+forbidden_modules =
+    reckon.training
+    reckon.serve
