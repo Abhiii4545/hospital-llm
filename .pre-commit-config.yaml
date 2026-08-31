@@ -1,0 +1,39 @@
+# Privacy hooks run FIRST and are local, so they work with no network and cannot
+# be skipped by a missing remote.
+default_install_hook_types: [pre-commit]
+fail_fast: false
+
+repos:
+  - repo: local
+    hooks:
+      - id: block-real-data
+        name: block real patient documents
+        entry: python tools/hooks/block_real_data.py
+        language: system
+        pass_filenames: true
+
+      - id: pii-scan
+        name: scan staged content for Indian PII
+        entry: python tools/hooks/pii_scan.py
+        language: system
+        types: [text]
+
+      - id: import-linter
+        name: enforce layer boundaries
+        entry: python tools/hooks/run_lint_imports.py
+        language: system
+        pass_filenames: false
+        files: ^reckon/.*\.py$
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: detect-private-key
+      - id: check-added-large-files
+        args: ["--maxkb=1024"]

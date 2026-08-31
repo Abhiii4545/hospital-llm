@@ -1,0 +1,8 @@
+# Path prefixes exempt from tools/hooks/pii_scan.py.
+#
+# Deliberately EMPTY. Every synthetic PII-shaped literal in this repo carries an
+# inline `pii-allow` marker instead, so the exemption is visible at the exact
+# line it applies to rather than blanket-disabled for a whole directory.
+#
+# Add a prefix here only when a whole generated directory is provably synthetic,
+# and say why in a comment.
