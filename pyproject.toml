@@ -9,6 +9,10 @@ license = { text = "MIT" }
 # Phase 1 runtime deps only. Later phases add their own; every addition is
 # licence-checked (MIT / Apache-2.0 / BSD only) before it lands here.
 dependencies = [
+    "augraphy>=8.2,<9",
+    "jinja2>=3.1,<4",
+    "pillow>=10.4,<12",
+    "playwright>=1.47,<2",
     "pydantic>=2.9,<3",        # MIT
     "pyyaml>=6,<7",
     "rapidfuzz>=3.9,<4",
