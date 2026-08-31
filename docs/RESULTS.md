@@ -24,6 +24,22 @@ Its precision is 0.82 but its recall is 0.24: it finds rows on
 layouts its header detection understands and finds *nothing* on the rest. That is
 the RECKON v1 failure mode, reproduced and measured.
 
+### Header matching, before and after
+
+Driving the review UI exposed first-match-wins in B1's header matching (`age`
+came out as the string "Patient Name"). Fixing it to best-score-wins was then
+**measured rather than assumed**:
+
+| metric | before | after |
+|---|---|---|
+| line-item F1 | 0.3719 | 0.3719 |
+| line-item precision / recall | 0.82 / 0.24 | 0.82 / 0.24 |
+| TED accuracy | 0.2211 | **0.2265** |
+
+Line-item numbers are byte-identical, which is the right answer: the change
+touched header fields, not row parsing. Document accuracy improved slightly. A
+single page had looked like a regression by eye; the benchmark says it was not.
+
 ### Why the phase 2 mini-set number was misleading
 
 B1 scored **0.987** line-item F1 on the mini-set and **0.372** here. The
