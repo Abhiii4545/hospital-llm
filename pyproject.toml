@@ -38,6 +38,9 @@ train = [
     "torch>=2.4,<3",
     "transformers>=4.44,<5",
 ]
+ocr = [
+    "rapidocr-onnxruntime>=1.3,<2",
+]
 
 [build-system]
 requires = ["hatchling"]       # MIT

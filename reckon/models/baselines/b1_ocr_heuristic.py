@@ -81,6 +81,13 @@ _TOTAL_WORDS = re.compile(
 )
 _FUZZ_FLOOR = 82
 
+#: Column headers get a lower floor than field labels. They are short, so a
+#: single dropped character costs a lot of ratio - real OCR read "Qty" as "Qt",
+#: which scores 80 and was being rejected, losing the quantity column on every
+#: page. Short strings are also less prone to false matches, so the looser floor
+#: is safe here in a way it would not be for a long field label.
+_COLUMN_FUZZ_FLOOR = 74
+
 
 def _split_cells(text: str) -> list[str]:
     """Split a row into cells on pipes, or on runs of two or more spaces."""
@@ -89,11 +96,31 @@ def _split_cells(text: str) -> list[str]:
     return [cell.strip() for cell in re.split(r"\s{2,}", text.strip()) if cell.strip()]
 
 
+#: Aliases shorter than this are matched whole-string only. A 3-character alias
+#: like "adm" or "doa" will partial-match almost anything.
+_MIN_PARTIAL_ALIAS = 5
+
+
 def _best_alias(token: str, aliases: Sequence[str]) -> int:
+    """Best fuzzy score of *token* against any alias.
+
+    Whole-string ratio alone fails on a real page. OCR reads the printed label
+    "Admission Date", which scores 78 against the alias "admission" purely
+    because of the extra word - so the field fell through to a worse match and
+    came out as the literal string "Date".
+
+    Partial ratio is therefore also considered, but only for aliases long enough
+    that a substring hit means something. Short aliases stay whole-string.
+    """
     token = token.strip().strip(":").casefold()
     if not token:
         return 0
-    return max(fuzz.ratio(token, alias) for alias in aliases)
+    best = 0
+    for alias in aliases:
+        best = max(best, fuzz.ratio(token, alias))
+        if len(alias) >= _MIN_PARTIAL_ALIAS:
+            best = max(best, fuzz.partial_ratio(token, alias))
+    return best
 
 
 def _looks_numeric(cell: str) -> bool:
@@ -179,11 +206,21 @@ class B1OcrHeuristic:
                 pairs.append((label, value))
             return pairs
 
-        # No colons at all (the government layout). Try "Label Value  Label Value".
-        for chunk in re.split(r"\s{3,}", text.strip()):
+        # No colons. Two different layouts produce this, and both must work.
+        chunks = [c for c in re.split(r"\s{2,}", text.strip()) if c]
+
+        # (a) Column-aligned: the label and its value are in ADJACENT chunks,
+        #     e.g. "Patient Name | Baby of Divya | UHID | UH253950". Real OCR
+        #     drops the colon and this is what a bill looks like afterwards.
+        #     Without this, "Patient Name" pairs with itself and patient.name
+        #     comes out as the literal string "Name".
+        for left, right in zip(chunks, chunks[1:]):
+            pairs.append((left, right))
+
+        # (b) Label and value inside ONE chunk, space separated
+        #     (the government layout: "Ward Deluxe Room").
+        for chunk in chunks:
             tokens = chunk.split()
-            if len(tokens) < 2:
-                continue
             for split_at in (1, 2, 3):
                 if split_at < len(tokens):
                     pairs.append((" ".join(tokens[:split_at]), " ".join(tokens[split_at:])))
@@ -231,7 +268,7 @@ class B1OcrHeuristic:
                 score = _best_alias(cell, aliases)
                 if score > best_score:
                     best_field, best_score = attribute, score
-            if best_field and best_score >= _FUZZ_FLOOR:
+            if best_field and best_score >= _COLUMN_FUZZ_FLOOR:
                 mapping[index] = best_field
         # Require a real table header, not two coincidental words.
         return mapping if len(set(mapping.values())) >= 3 else None
