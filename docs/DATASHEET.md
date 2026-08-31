@@ -152,8 +152,18 @@ none would have shown up in a class-balance table:
 3. **The `heavy` bucket produced pages no human could read.** That is label
    noise, not difficulty — 15% of the corpus would have been teaching the model
    to hallucinate. Tuned down, and two legibility guards added.
-4. **The legibility metric written to catch (3) was itself wrong** — `p50 − p5`
-   measures histogram spread on a mostly-white page and ranked the clean render
-   *below* a degraded one. Replaced with `p90 − p2` plus Laplacian variance, both
-   calibrated against a deliberately destroyed control that a test requires them
-   to reject.
+4. **The legibility metric written to catch (3) was wrong twice.** First `p50 −
+   p5`, which measures histogram spread on a mostly-white page and ranked the
+   clean render *below* a degraded one. Then `p90 − p2`, which looked right on a
+   dense page and failed on a sparse one — over the first full corpus build it
+   rejected **36% of the CLEAN bucket** and scored a perfectly legible
+   nursing-home page (28.9) *below* a deliberately destroyed control (36.0). Both
+   were measuring ink DENSITY, not legibility. Now Otsu class separation, which
+   finds the ink/paper split from the image itself: real pages score 165–215 and
+   the destroyed control 31. The corpus was regenerated.
+
+5. **158 pages that failed the guard kept their clean render but were still
+   labelled `heavy`** — 9.8% of that slice would have been pristine images
+   inflating exactly the number the slice exists to report. The manifest now
+   carries `quality_effective` alongside the requested `quality`, and slice
+   analysis keys off the former.
