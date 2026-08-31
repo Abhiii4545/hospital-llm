@@ -1,0 +1,29 @@
+{% extends "_base.html.j2" %}
+{% import "_macros.html.j2" as m %}
+{% block extra_css %} table.items { font-size: {{ base_size - 2 }}px; } {% endblock %}
+{% block content %}
+{% if spec.header_position == 'split' %}
+  <div class="split"><div><div class="org" style="font-size:{{ base_size+4 }}px;font-weight:700">{{ ctx.hospital.name }} &mdash; Pharmacy</div>
+    <div class="org-sub">{{ ctx.hospital.city }}</div></div>
+    <div class="org-sub" style="text-align:right">DL No 21B/{{ ctx.invoice_no[-4:] }}<br>GSTIN {{ ctx.hospital.gstin }}</div></div>
+{% elif spec.header_position == 'minimal' %}
+  <div style="font-weight:700">{{ ctx.hospital.name }} &mdash; Pharmacy Sub-Bill</div>
+  <div class="org-sub">GSTIN {{ ctx.hospital.gstin }}</div>
+{% else %}
+  <div class="banner"><div class="org">{{ ctx.hospital.name }}</div>
+    <div class="org-sub">PHARMACY SUB-BILL &middot; {{ ctx.hospital.city }} &middot; GSTIN {{ ctx.hospital.gstin }}</div></div>
+{% endif %}
+<div class="rule"></div>
+{% if page.continued %}<div class="cont">Continued from page {{ page.index }} &mdash; {{ ctx.hospital.name }}</div>{% endif %}
+{% if page.show_header %}
+  {{ m.meta_pairs([
+      ('Patient', ctx.patient.name), ('UHID', ctx.patient.uhid or '-'),
+      ('IP No', ctx.patient.ip_number), ('Ward', ctx.patient.ward_type),
+      ('Issued From', ctx.patient.admission_date), ('Issued To', ctx.patient.discharge_date),
+      ('Insurer', ctx.insurance.insurer_name), ('Claim No', ctx.insurance.claim_number),
+    ], 2) }}
+  <div class="thin"></div>
+{% endif %}
+{{ m.items_table(spec, rows, labels) }}
+{{ m.totals_block(spec, ctx, page) }}
+{% endblock %}

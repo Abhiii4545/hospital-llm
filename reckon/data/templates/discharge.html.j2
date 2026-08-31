@@ -1,0 +1,33 @@
+{% extends "_base.html.j2" %}
+{% import "_macros.html.j2" as m %}
+{% block extra_css %}
+  .lh { text-align:center; border-bottom: 2px solid #222; padding-bottom: 7px; }
+  .clin { font-size: {{ base_size - 1 }}px; margin: 8px 0 4px; }
+  .clin b { display:inline-block; min-width: 122px; }
+{% endblock %}
+{% block content %}
+{% if spec.header_position == 'banner' %}
+  <div class="banner"><div class="org" style="font-size:{{ base_size+6 }}px;font-weight:700">{{ ctx.hospital.name }}</div>
+    <div class="org-sub">{{ ctx.hospital.address }}, {{ ctx.hospital.city }} &middot; GSTIN {{ ctx.hospital.gstin }}</div></div>
+{% else %}
+  <div class="lh"><div class="org" style="font-size:{{ base_size+6 }}px;font-weight:700">{{ ctx.hospital.name }}</div>
+    <div class="org-sub">{{ ctx.hospital.address }}, {{ ctx.hospital.city }}, {{ ctx.hospital.state }}</div>
+    <div class="org-sub">GSTIN {{ ctx.hospital.gstin }}</div></div>
+{% endif %}
+{% if page.continued %}<div class="cont">Continued from page {{ page.index }} &mdash; {{ ctx.hospital.name }}</div>{% endif %}
+{% if page.show_header %}
+  <div class="doctitle">{% if ctx.bilingual %}{{ bi.discharge_summary }}{% else %}DISCHARGE SUMMARY{% endif %}</div>
+  <div class="clin"><b>Patient</b> {{ ctx.patient.name }} &nbsp; <b>Age/Sex</b> {{ ctx.patient.age }}/{{ ctx.patient.sex }}</div>
+  <div class="clin"><b>UHID</b> {{ ctx.patient.uhid or '--' }} &nbsp; <b>IP No</b> {{ ctx.patient.ip_number }}</div>
+  <div class="clin"><b>Ward</b> {{ ctx.patient.ward_type }}</div>
+  <div class="clin"><b>Admitted</b> {{ ctx.patient.admission_date }} &nbsp; <b>Discharged</b> {{ ctx.patient.discharge_date }}</div>
+  <div class="clin"><b>Insurer / TPA</b> {{ ctx.insurance.insurer_name }} / {{ ctx.insurance.tpa_name }}</div>
+  <div class="clin"><b>Policy / Claim</b> {{ ctx.insurance.policy_number }} / {{ ctx.insurance.claim_number }}</div>
+  <div class="clin"><b>Diagnosis</b> {{ diagnosis }}</div>
+  <div class="clin"><b>Condition</b> Stable at discharge. Advised review after 7 days.</div>
+  <div class="thin"></div>
+  <div style="font-weight:700;margin-bottom:3px">ANNEXURE &mdash; BILLING DETAILS</div>
+{% endif %}
+{{ m.items_table(spec, rows, labels) }}
+{{ m.totals_block(spec, ctx, page) }}
+{% endblock %}

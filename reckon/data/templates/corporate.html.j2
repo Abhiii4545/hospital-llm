@@ -1,0 +1,37 @@
+{% extends "_base.html.j2" %}
+{% import "_macros.html.j2" as m %}
+{% block content %}
+{% if page.show_header or spec.repeat_header_on_continuation %}
+  {% if spec.header_position == 'split' %}
+    <div class="split">
+      <div><div class="org">{{ ctx.hospital.name }}</div>
+        <div class="org-sub">{{ ctx.hospital.address }}, {{ ctx.hospital.city }}</div>
+        <div class="org-sub">{{ ctx.hospital.state }}</div></div>
+      <div style="text-align:right" class="org-sub">
+        GSTIN: {{ ctx.hospital.gstin }}<br>Invoice: {{ ctx.invoice_no }}</div>
+    </div>
+  {% else %}
+    <div class="banner">
+      <div class="org">{{ ctx.hospital.name }}</div>
+      <div class="org-sub">{{ ctx.hospital.address }}, {{ ctx.hospital.city }}, {{ ctx.hospital.state }}</div>
+      <div class="org-sub">GSTIN: {{ ctx.hospital.gstin }}</div>
+    </div>
+  {% endif %}
+  <div class="rule"></div>
+{% endif %}
+{% if page.continued %}<div class="cont">Continued from page {{ page.index }} &mdash; {{ ctx.hospital.name }}</div>{% endif %}
+{% if page.show_header %}
+  <div class="doctitle">FINAL BILL OF SUPPLY</div>
+  {{ m.meta_pairs([
+      ('Patient Name', ctx.patient.name), ('UHID', ctx.patient.uhid or '-'),
+      ('Age', ctx.patient.age), ('Sex', ctx.patient.sex),
+      ('IP No', ctx.patient.ip_number), ('Ward Type', ctx.patient.ward_type),
+      ('Admission Date', ctx.patient.admission_date), ('Discharge Date', ctx.patient.discharge_date),
+      ('Insurer', ctx.insurance.insurer_name), ('TPA', ctx.insurance.tpa_name),
+      ('Policy No', ctx.insurance.policy_number), ('Claim No', ctx.insurance.claim_number),
+    ], 2) }}
+  <div class="thin"></div>
+{% endif %}
+{{ m.items_table(spec, rows, labels) }}
+{{ m.totals_block(spec, ctx, page) }}
+{% endblock %}

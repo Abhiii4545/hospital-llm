@@ -1,0 +1,35 @@
+{% extends "_base.html.j2" %}
+{% import "_macros.html.j2" as m %}
+{% block extra_css %}
+  body { padding: 46px 52px; }
+  .meta td { padding: 2.5px 6px 2.5px 0; }
+{% endblock %}
+{% block content %}
+{% if spec.header_position == 'minimal' %}
+  <div style="font-weight:700">{{ ctx.hospital.name }}</div>
+  <div class="org-sub">{{ ctx.hospital.city }} | GSTIN {{ ctx.hospital.gstin }}</div>
+{% else %}
+  <div class="org" style="font-size:{{ base_size + 4 }}px;font-weight:700">{{ ctx.hospital.name }}</div>
+  <div class="org-sub">{{ ctx.hospital.address }}</div>
+  <div class="org-sub">{{ ctx.hospital.city }} - {{ ctx.hospital.state }}</div>
+  <div class="org-sub">GSTIN {{ ctx.hospital.gstin }}</div>
+{% endif %}
+<div class="thin"></div>
+{% if page.continued %}<div class="cont">Continued from page {{ page.index }} &mdash; {{ ctx.hospital.name }}</div>{% endif %}
+{% if page.show_header %}
+  <div class="doctitle">BILL</div>
+  <table class="meta"><tbody>
+    <tr><td class="k">Patient</td><td class="v">{{ ctx.patient.name }}</td></tr>
+    <tr><td class="k">Age / Sex</td><td class="v">{{ ctx.patient.age }} / {{ ctx.patient.sex }}</td></tr>
+    <tr><td class="k">UHID</td><td class="v">{{ ctx.patient.uhid or '' }}</td></tr>
+    <tr><td class="k">IP No</td><td class="v">{{ ctx.patient.ip_number }}</td></tr>
+    <tr><td class="k">Ward</td><td class="v">{{ ctx.patient.ward_type }}</td></tr>
+    <tr><td class="k">Admitted</td><td class="v">{{ ctx.patient.admission_date }}</td></tr>
+    <tr><td class="k">Discharged</td><td class="v">{{ ctx.patient.discharge_date }}</td></tr>
+    <tr><td class="k">Insurer</td><td class="v">{{ ctx.insurance.insurer_name }}</td></tr>
+    <tr><td class="k">Policy</td><td class="v">{{ ctx.insurance.policy_number }}</td></tr>
+  </tbody></table>
+{% endif %}
+{{ m.items_table(spec, rows, labels) }}
+{{ m.totals_block(spec, ctx, page) }}
+{% endblock %}

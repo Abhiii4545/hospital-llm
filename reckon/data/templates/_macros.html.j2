@@ -1,0 +1,51 @@
+{% macro items_table(spec, rows, labels) %}
+<table class="items">
+  <thead><tr>
+    {% for col in spec.columns %}
+      <th class="{{ 'num' if col in ('amount','unit_rate') else ('ctr' if col in ('quantity','serial_no') else '') }}">{{ labels[col] }}</th>
+    {% endfor %}
+  </tr></thead>
+  <tbody>
+  {% for row in rows %}
+    {% if row.get('__group__') %}
+      <tr><td class="grp" colspan="{{ spec.columns|length }}">{{ row['__group__'] }}</td></tr>
+    {% elif row.get('__subtotal__') %}
+      <tr class="sub">
+        <td colspan="{{ spec.columns|length - 1 }}">{{ row['__subtotal__'] }}</td>
+        <td class="num">{{ row['amount'] }}</td>
+      </tr>
+    {% else %}
+      <tr>
+      {% for col in spec.columns %}
+        <td class="{{ 'num' if col in ('amount','unit_rate') else ('ctr' if col in ('quantity','serial_no') else '') }}">{{ row[col] }}</td>
+      {% endfor %}
+      </tr>
+    {% endif %}
+  {% endfor %}
+  </tbody>
+</table>
+{% endmacro %}
+
+{% macro totals_block(spec, ctx, page) %}
+{% if page.show_totals %}
+<div class="totals {{ 't-right' if spec.totals_position == 'right' else ('t-left' if spec.totals_position == 'left' else ('t-full' if spec.totals_position == 'full' else 't-inline')) }}">
+  <table>
+    <tr><td class="k">Gross Amount</td><td class="v">{{ ctx.totals.gross_amount }}</td></tr>
+    <tr><td class="k">Discount</td><td class="v">{{ ctx.totals.discount }}</td></tr>
+    <tr><td class="k">CGST</td><td class="v">{{ ctx.totals.cgst }}</td></tr>
+    <tr><td class="k">SGST</td><td class="v">{{ ctx.totals.sgst }}</td></tr>
+    <tr class="net"><td class="k">Net Amount</td><td class="v">{{ ctx.totals.net_amount }}</td></tr>
+    <tr><td class="k">Advance Paid</td><td class="v">{{ ctx.totals.advance_paid }}</td></tr>
+    <tr><td class="k">Balance Due</td><td class="v">{{ ctx.totals.balance_due }}</td></tr>
+  </table>
+</div>
+{% endif %}
+{% endmacro %}
+
+{% macro meta_pairs(pairs, per_row) %}
+<table class="meta"><tbody>
+{% for chunk in pairs|batch(per_row) %}
+  <tr>{% for k, v in chunk %}<td class="k">{{ k }}</td><td class="v">{{ v }}</td>{% endfor %}</tr>
+{% endfor %}
+</tbody></table>
+{% endmacro %}

@@ -1,0 +1,81 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+  @page { size: A4; margin: 0; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 34px 40px 40px 40px; background: #fff; color: #111;
+    font-family: {{ fontstack }}; font-size: {{ base_size }}px; line-height: 1.35;
+    width: 794px; min-height: 1123px; position: relative;
+  }
+  .rule { border-bottom: 1.5px solid #000; margin: 6px 0 10px; }
+  .thin { border-bottom: 1px solid #666; margin: 5px 0 8px; }
+  .banner { text-align: center; }
+  .banner .org { font-size: {{ base_size + 7 }}px; font-weight: 700; letter-spacing: .5px; }
+  .org-sub { font-size: {{ base_size - 1 }}px; color: #333; }
+  .split { display: flex; justify-content: space-between; align-items: flex-start; gap: 18px; }
+  .split .org { font-size: {{ base_size + 5 }}px; font-weight: 700; }
+  .doctitle { text-align: center; font-weight: 700; letter-spacing: 2px;
+              margin: 10px 0 8px; font-size: {{ base_size + 1 }}px; }
+  .meta { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+  .meta td { padding: 1.5px 6px 1.5px 0; vertical-align: top; font-size: {{ base_size - 1 }}px; }
+  .meta .k { color: #222; white-space: nowrap; }
+  .meta .v { font-weight: 600; padding-right: 22px; }
+  table.items { width: 100%; border-collapse: collapse; margin-top: 4px;
+                font-size: {{ base_size - 1 }}px; }
+  table.items th { text-align: left; font-weight: 700; padding: 3px 5px; }
+  table.items td { padding: 2.5px 5px; vertical-align: top; }
+  table.items td.num, table.items th.num { text-align: right; white-space: nowrap; }
+  table.items td.ctr, table.items th.ctr { text-align: center; }
+  {% if table_style == 'bordered' %}
+    table.items, table.items th, table.items td { border: 1px solid #333; }
+    table.items th { background: #ececec; }
+  {% elif table_style == 'striped' %}
+    table.items th { border-bottom: 2px solid #333; background: #f2f2f2; }
+    table.items tbody tr:nth-child(even) { background: #f7f7f7; }
+    table.items td { border-bottom: 1px solid #ddd; }
+  {% elif table_style == 'ruled' %}
+    table.items th { border-bottom: 1.5px solid #000; }
+    table.items td { border-bottom: 1px dotted #999; }
+  {% else %}
+    table.items th { border-bottom: 1px solid #000; }
+  {% endif %}
+  .grp { font-weight: 700; padding-top: 7px; }
+  .sub { font-weight: 600; border-top: 1px solid #999; }
+  .totals { margin-top: 12px; font-size: {{ base_size - 1 }}px; }
+  .totals table { border-collapse: collapse; }
+  .totals td { padding: 2px 8px; }
+  .totals td.k { text-align: left; }
+  .totals td.v { text-align: right; font-weight: 600; white-space: nowrap;
+                 min-width: 108px; }
+  .totals .net td { border-top: 1.5px solid #000; font-weight: 700; }
+  .t-right { display: flex; justify-content: flex-end; }
+  .t-left  { display: flex; justify-content: flex-start; }
+  .t-full table { width: 100%; }
+  .t-inline td { padding: 1px 6px; }
+  .foot { position: absolute; bottom: 26px; left: 40px; right: 40px;
+          font-size: {{ base_size - 3 }}px; color: #444;
+          display: flex; justify-content: space-between; }
+  .cont { font-style: italic; font-size: {{ base_size - 2 }}px; color: #444;
+          margin-bottom: 6px; }
+  .hand { position: absolute; font-family: 'Segoe Script','Bradley Hand',cursive;
+          color: #123a8f; transform: rotate(-6deg); font-size: {{ base_size + 3 }}px; }
+  .stamp { position: absolute; right: 54px; bottom: 96px; border: 2.5px solid #1b5e20;
+           color: #1b5e20; padding: 7px 13px; font-size: {{ base_size - 1 }}px;
+           font-weight: 700; transform: rotate(-11deg); opacity: .75;
+           border-radius: 4px; letter-spacing: 1px; }
+  .bi { font-size: {{ base_size - 1 }}px; }
+  {% block extra_css %}{% endblock %}
+</style></head>
+<body>
+{% block content %}{% endblock %}
+{% if page.continued %}{% endif %}
+<div class="foot">
+  <div>{{ ctx.invoice_no }}</div>
+  <div>Page {{ page.index + 1 }} of {{ page.total_pages }}</div>
+</div>
+{% if ctx.handwritten and page.show_totals %}
+  <div class="hand" style="left: 58%; bottom: 150px;">corrected {{ ctx.totals.net_amount }}</div>
+{% endif %}
+{% if stamped and page.show_totals %}<div class="stamp">PAID</div>{% endif %}
+</body></html>
