@@ -368,3 +368,40 @@ def test_deployment_sentence_reads_like_a_deployment_decision() -> None:
     assert "auto-processes" in sentence
     assert "human review" in sentence
     assert "%" in sentence
+
+
+# --------------------------------------------------------------------------
+# eval cache
+# --------------------------------------------------------------------------
+
+def test_cache_does_not_change_any_number() -> None:
+    """A stale cache here would silently corrupt every reported result.
+
+    The cache is the one optimisation in the harness, so it is checked against
+    the uncached path rather than trusted.
+    """
+    from reckon.eval.metrics import EvalCache
+
+    pred = make_raw(items=[item("Room Rent", "450"), item("Attendant", "100", "N")])
+    truth = make_raw(items=[item("Room Rent", "500"), item("Attendant", "100", "N")])
+    pairs = [pair(pred, truth, "d1"), pair(truth, truth, "d2")]
+
+    cache = EvalCache()
+    assert score_fields(pairs) == score_fields(pairs, cache)
+    assert score_line_items(pairs) == score_line_items(pairs, cache=cache)
+    assert score_documents(pairs) == score_documents(pairs, cache)
+    assert score_business(pairs) == score_business(pairs, cache=cache)
+
+
+def test_cache_keys_on_doc_id_not_position() -> None:
+    """Two different documents must never collide in the cache."""
+    from reckon.eval.metrics import EvalCache
+
+    a = pair(make_raw(net="100"), make_raw(net="100"), "a")
+    b = pair(make_raw(net="999"), make_raw(net="100"), "b")
+    cache = EvalCache()
+
+    first = score_business([a, b], cache=cache)
+    second = score_business([a, b], cache=cache)
+    assert first == second
+    assert first.median_error == score_business([a, b]).median_error

@@ -26,6 +26,7 @@ from reckon.eval.metrics import (
     CoveragePoint,
     DocumentPair,
     DocumentScore,
+    EvalCache,
     FieldScore,
     LineItemScore,
     auto_processing_rate,
@@ -60,16 +61,21 @@ def evaluate_system(
     pairs: Sequence[DocumentPair],
     confidences: Mapping[str, Mapping[str, float]] | None = None,
 ) -> SystemResult:
-    """Run every metric family over one system's predictions."""
+    """Run every metric family over one system's predictions.
+
+    A single cache spans the whole system: every family and every slice would
+    otherwise re-normalize and re-tree-diff the same documents.
+    """
+    cache = EvalCache()
     return SystemResult(
         name=name,
         n=len(pairs),
-        fields=score_fields(pairs),
-        line_items=score_line_items(pairs),
-        documents=score_documents(pairs),
-        business=score_business(pairs),
-        slices=slice_report(pairs),
-        coverage=coverage_curve(pairs, confidences) if confidences else [],
+        fields=score_fields(pairs, cache),
+        line_items=score_line_items(pairs, cache=cache),
+        documents=score_documents(pairs, cache),
+        business=score_business(pairs, cache=cache),
+        slices=slice_report(pairs, cache),
+        coverage=coverage_curve(pairs, confidences, cache=cache) if confidences else [],
     )
 
 
@@ -109,7 +115,9 @@ def _ascii_curve(points: Sequence[CoveragePoint], height: int = 9) -> str:
     lines = ["```", "accuracy"]
     for row_index, row in enumerate(grid):
         label = 1.0 - row_index / (height - 1)
-        lines.append(f"{label:4.2f} |" + "".join(row))
+        # rstrip: trailing whitespace would be stripped by the pre-commit
+        # hook, making a regenerated report differ from the committed one.
+        lines.append((f"{label:4.2f} |" + "".join(row)).rstrip())
     lines.append("     +" + "-" * len(usable))
     lines.append("      coverage: " + " -> ".join(_pct(p.field_coverage) for p in usable[:6]))
     lines.append("```")

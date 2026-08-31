@@ -18,6 +18,7 @@ from typing import Sequence
 
 from reckon.eval.metrics import (
     DocumentPair,
+    EvalCache,
     score_business,
     score_documents,
     score_fields,
@@ -74,18 +75,22 @@ def group_by(pairs: Sequence[DocumentPair], key: str) -> dict[str, list[Document
     return dict(groups)
 
 
-def summarise(pairs: Sequence[DocumentPair], key: str, value: str) -> SliceSummary:
+def summarise(
+    pairs: Sequence[DocumentPair], key: str, value: str,
+    cache: EvalCache | None = None,
+) -> SliceSummary:
     """Headline numbers for one slice.
 
     The macro averages here are a summary only. The per-field breakdown that the
     brief insists on lives in the main report section; a slice table with 27
     columns would be unreadable and would get skipped, which is worse.
     """
-    fields = score_fields(pairs)
+    cache = cache or EvalCache()
+    fields = score_fields(pairs, cache)
     n_fields = len(fields) or 1
-    line_items = score_line_items(pairs)
-    documents = score_documents(pairs)
-    business = score_business(pairs)
+    line_items = score_line_items(pairs, cache=cache)
+    documents = score_documents(pairs, cache)
+    business = score_business(pairs, cache=cache)
 
     return SliceSummary(
         key=key,
@@ -100,12 +105,19 @@ def summarise(pairs: Sequence[DocumentPair], key: str, value: str) -> SliceSumma
     )
 
 
-def slice_report(pairs: Sequence[DocumentPair]) -> dict[str, list[SliceSummary]]:
-    """All slice breakdowns, keyed by metadata field."""
+def slice_report(
+    pairs: Sequence[DocumentPair], cache: EvalCache | None = None
+) -> dict[str, list[SliceSummary]]:
+    """All slice breakdowns, keyed by metadata field.
+
+    One cache spans every slice: the same documents appear in every breakdown, so
+    without it each document is normalized and tree-diffed once per slice key.
+    """
+    cache = cache or EvalCache()
     report: dict[str, list[SliceSummary]] = {}
     for key in discover_slice_keys(pairs):
         summaries = [
-            summarise(group, key, value)
+            summarise(group, key, value, cache)
             for value, group in sorted(group_by(pairs, key).items())
         ]
         if summaries:

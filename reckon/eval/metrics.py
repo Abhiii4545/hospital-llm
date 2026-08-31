@@ -47,6 +47,7 @@ __all__ = [
     "DEFAULT_MATCH_THRESHOLD",
     "MATERIAL_ERROR_RUPEES",
     "DocumentPair",
+    "EvalCache",
     "FieldScore",
     "LineItemScore",
     "DocumentScore",
@@ -72,6 +73,46 @@ DEFAULT_MATCH_THRESHOLD = 0.60
 
 #: Net-payable error above which a document is "materially wrong" (section 5).
 MATERIAL_ERROR_RUPEES = Decimal("100")
+
+
+class EvalCache:
+    """Per-run memo for work that is otherwise repeated many times over.
+
+    Every metric family normalizes the same pair, and every slice re-scores the
+    same documents, so a 20-document set was doing normalization ~24 times per
+    document and a full O(n^2) tree edit distance ~16 times. That is merely slow
+    at 20 documents and unusable at the 10,000 pages Phase 3 produces.
+
+    The cache is created and owned by the CALLER for the duration of one
+    evaluation. It is deliberately not a module-level or decorator cache: a stale
+    entry here would silently corrupt a result, so its lifetime is explicit and
+    bounded, and it is keyed by doc_id within a single system's run.
+    """
+
+    __slots__ = ("_normalized", "_documents")
+
+    def __init__(self) -> None:
+        self._normalized: dict[str, tuple[object, object]] = {}
+        self._documents: dict[str, tuple[bool, float, float]] = {}
+
+    def normalized(self, pair: "DocumentPair"):
+        hit = self._normalized.get(pair.doc_id)
+        if hit is None:
+            hit = (normalize_document(pair.pred), normalize_document(pair.truth))
+            self._normalized[pair.doc_id] = hit
+        return hit
+
+    def document(self, pair: "DocumentPair") -> tuple[bool, float, float]:
+        hit = self._documents.get(pair.doc_id)
+        if hit is None:
+            npred, ntruth = self.normalized(pair)
+            hit = (
+                npred == ntruth,
+                ted_accuracy(json_to_tree(_payload(npred)), json_to_tree(_payload(ntruth))),
+                ted_accuracy(json_to_tree(_payload(pair.pred)), json_to_tree(_payload(pair.truth))),
+            )
+            self._documents[pair.doc_id] = hit
+        return hit
 
 
 class DocumentPair(NamedTuple):
@@ -155,11 +196,12 @@ class FieldScore:
         return self.normalized_exact - self.exact
 
 
-def score_fields(pairs: Sequence[DocumentPair]) -> dict[str, FieldScore]:
+def score_fields(
+    pairs: Sequence[DocumentPair], cache: EvalCache | None = None
+) -> dict[str, FieldScore]:
     """Per-field scores. Returns a dict keyed by field path - never an average."""
-    normalized = [
-        (normalize_document(p.pred), normalize_document(p.truth)) for p in pairs
-    ]
+    cache = cache or EvalCache()
+    normalized = [cache.normalized(p) for p in pairs]
 
     scores: dict[str, FieldScore] = {}
     for path in FIELD_PATHS:
@@ -258,14 +300,15 @@ def match_line_items(
 def score_line_items(
     pairs: Sequence[DocumentPair],
     threshold: float = DEFAULT_MATCH_THRESHOLD,
+    cache: EvalCache | None = None,
 ) -> LineItemScore:
+    cache = cache or EvalCache()
     n_true = n_pred = n_matched = 0
     attribute_hits: dict[str, int] = {f: 0 for f in LINE_ITEM_FIELDS}
     attribute_support: dict[str, int] = {f: 0 for f in LINE_ITEM_FIELDS}
 
     for pair in pairs:
-        pred_doc = normalize_document(pair.pred)
-        truth_doc = normalize_document(pair.truth)
+        pred_doc, truth_doc = cache.normalized(pair)
         pred_items, truth_items = pred_doc.line_items, truth_doc.line_items
 
         n_pred += len(pred_items)
@@ -324,21 +367,17 @@ def _payload(doc: Document | RawDocument) -> dict:
     return doc.model_dump(mode="json")
 
 
-def score_documents(pairs: Sequence[DocumentPair]) -> DocumentScore:
-    strict = 0.0
-    ted_norm = 0.0
-    ted_raw = 0.0
+def score_documents(
+    pairs: Sequence[DocumentPair], cache: EvalCache | None = None
+) -> DocumentScore:
+    cache = cache or EvalCache()
+    strict = ted_norm = ted_raw = 0.0
 
     for pair in pairs:
-        npred, ntruth = normalize_document(pair.pred), normalize_document(pair.truth)
-        if npred == ntruth:
-            strict += 1.0
-        ted_norm += ted_accuracy(
-            json_to_tree(_payload(npred)), json_to_tree(_payload(ntruth))
-        )
-        ted_raw += ted_accuracy(
-            json_to_tree(_payload(pair.pred)), json_to_tree(_payload(pair.truth))
-        )
+        exact, accuracy_norm, accuracy_raw = cache.document(pair)
+        strict += 1.0 if exact else 0.0
+        ted_norm += accuracy_norm
+        ted_raw += accuracy_raw
 
     n = len(pairs) or 1
     return DocumentScore(
@@ -401,14 +440,16 @@ def score_business(
     pairs: Sequence[DocumentPair],
     payable_fn: Callable[[Document], Decimal | None] = default_net_payable,
     threshold: Decimal = MATERIAL_ERROR_RUPEES,
+    cache: EvalCache | None = None,
 ) -> BusinessScore:
     """Rupee-denominated error in the number the insurer actually pays."""
+    cache = cache or EvalCache()
     errors: list[Decimal] = []
     deduction_exact = 0
     scored = 0
 
     for pair in pairs:
-        npred, ntruth = normalize_document(pair.pred), normalize_document(pair.truth)
+        npred, ntruth = cache.normalized(pair)
         true_payable = payable_fn(ntruth)
         if true_payable is None:
             continue
@@ -459,6 +500,7 @@ def coverage_curve(
     pairs: Sequence[DocumentPair],
     confidences: Confidences,
     thresholds: Iterable[float] | None = None,
+    cache: EvalCache | None = None,
 ) -> list[CoveragePoint]:
     """Sweep an abstention threshold and trace coverage against accuracy.
 
@@ -469,10 +511,8 @@ def coverage_curve(
     if thresholds is None:
         thresholds = [i / 20 for i in range(21)]
 
-    normalized = {
-        p.doc_id: (normalize_document(p.pred), normalize_document(p.truth))
-        for p in pairs
-    }
+    cache = cache or EvalCache()
+    normalized = {p.doc_id: cache.normalized(p) for p in pairs}
 
     points: list[CoveragePoint] = []
     for threshold in thresholds:
