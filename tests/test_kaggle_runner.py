@@ -99,3 +99,43 @@ def test_the_notebook_it_ships_is_kaggle_shaped() -> None:
     assert "google.colab" not in source
     assert "/kaggle/input" in source
     assert "0.372" in source                   # the gate is stated in the notebook
+
+
+# --------------------------------------------------------------------------
+# the notebook itself
+# --------------------------------------------------------------------------
+
+@pytest.mark.parametrize("notebook", ["train_kaggle.ipynb", "train_colab.ipynb"])
+def test_every_code_cell_is_valid_python(notebook: str) -> None:
+    """A notebook is shipped code and gets the same scrutiny.
+
+    Generated cells have twice carried a broken string literal from an escaping
+    slip in the generator, which would fail in the user's session rather than
+    here. Jupyter magics and shell lines are stubbed before parsing since they
+    are not Python.
+    """
+    import ast
+    import json
+
+    nb = json.loads(Path(f"notebooks/{notebook}").read_text(encoding="utf-8"))
+    for index, cell in enumerate(nb["cells"]):
+        if cell["cell_type"] != "code":
+            continue
+        source = "".join(cell["source"])
+        stubbed = "\n".join(
+            "pass" if line.strip().startswith(("!", "%")) else line
+            for line in source.splitlines()
+        )
+        try:
+            ast.parse(stubbed)
+        except SyntaxError as error:                       # pragma: no cover
+            raise AssertionError(
+                f"{notebook} cell {index} line {error.lineno}: {error.msg}"
+            ) from error
+
+
+def test_kaggle_notebook_verifies_corpus_integrity() -> None:
+    """A partial upload must fail at cell 3, not hours into training."""
+    source = Path("notebooks/train_kaggle.ipynb").read_text(encoding="utf-8")
+    assert "images MISSING" in source
+    assert "upload is incomplete" in source.lower()

@@ -99,18 +99,13 @@ print(f"images present: {len(rows)-len(missing):,}")
 print(f"images MISSING: {len(missing):,}")
 
 if missing:
-    print("
-Examples:", [m["image"] for m in missing[:3]])
+    print("Examples:", [m["image"] for m in missing[:3]])
     raise SystemExit(
-        f"
-{len(missing):,} of {len(rows):,} pages are missing from the dataset.
-"
-        "The upload is incomplete. Re-upload data/synthetic.zip and let it finish
-"
-        "before training - a partial corpus fails hours in, not now."
+        f"{len(missing):,} of {len(rows):,} pages are missing from the dataset. "
+        "The upload is incomplete. Re-upload the corpus and let it finish before "
+        "training - a partial corpus fails hours in, not now."
     )
-print("
-OK: every manifest page is present.")
+print("OK: every manifest page is present.")
 """),
     md("""
 ## 2. Clone the code and install
