@@ -117,6 +117,29 @@ Not distributed. Regenerated from `reckon/data/build_corpus.py` at a given seed
 and git SHA. `data/synthetic/` is gitignored — ~10k PNGs do not belong in a
 repository, and the generator is the artefact worth versioning.
 
+## Public insurer samples — investigated, and they do not work
+
+The brief lists "publicly posted sample bills from insurer websites" as a source
+for the real corpus. That was searched and one candidate fetched and read, so the
+conclusion is measured rather than assumed:
+
+**What is publicly posted by Indian insurers and TPAs is claim FORMS, not
+itemised hospital bills.** The most promising candidate - a TPA's "Sample filled
+Claim Form" - is a *Claim Acknowledgment Sheet* whose fields are filled with
+placeholders (`Insured Name: XYZ`, `Patient Name: PQR`, `Policy No: 12345678`,
+`Mobile: XXXXXXXXXX`). Text extraction finds no `particulars`, `s.no`,
+`quantity`, `rate`, `room rent` or `gstin` - there is **no itemised billing table
+in it at all**.
+
+That matters because the line-item table is the core of what this system
+extracts, and the part Head B exists for. A claim form overlaps our schema only
+on a few header fields, and its values are dummies.
+
+**Conclusion: public insurer material cannot serve as `real-dev` or
+`real-test`.** The real corpus has to come from genuine documents with recorded
+consent, per section 4.2. Nothing downloadable substitutes for it, and this is
+recorded so the search is not repeated.
+
 ## Errata — bugs found by looking at the images
 
 Recorded because they are the argument for the contact-sheet review step, and
