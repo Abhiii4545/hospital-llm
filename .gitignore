@@ -29,3 +29,9 @@ wandb/
 # --- local ---
 .env
 .DS_Store
+
+# phase 2 mini-set: regenerated from reckon/data/mini_set.py, not committed
+data/mini/
+
+# reports generated from a dirty tree are not reproducible, so not committed
+reports/*-dirty.md
