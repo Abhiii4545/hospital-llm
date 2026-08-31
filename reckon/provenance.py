@@ -31,7 +31,7 @@ __all__ = [
 
 #: Libraries whose version can change a numeric result. Recorded on every run.
 TRACKED_PACKAGES: tuple[str, ...] = (
-    "pydantic", "numpy", "torch", "transformers", "datasets",
+    "pydantic", "numpy", "scipy", "rapidfuzz", "torch", "transformers", "datasets",
     "pillow", "augraphy", "onnxruntime", "paddleocr",
 )
 
