@@ -20,8 +20,8 @@ between synthetic-test and real-test performance, not the synthetic number alone
 
 | Phase | Scope | State |
 |------:|-------|-------|
-| 1 | Skeleton, schema, normalizers, privacy hooks, CI | **in progress** |
-| 2 | Eval harness + B0 (v1 rules) + B1 (OCR heuristics) | not started |
+| 1 | Skeleton, schema, normalizers, privacy hooks, CI | complete |
+| 2 | Eval harness + B0 (v1 rules) + B1 (OCR heuristics) | **complete** |
 | 3 | Synthetic corpus, 8–12k pages | not started |
 | 4 | Head B — line items | not started |
 | 5 | Head A + assembly + ablations | not started |
@@ -29,8 +29,11 @@ between synthetic-test and real-test performance, not the synthetic number alone
 | 7 | Error taxonomy on real-dev | not started |
 | 8 | Serving, ONNX variants, demo, docs | not started |
 
-No results table appears here until Phase 2 produces one. An empty results
-section is more honest than a placeholder full of aspirational numbers.
+No results table appears here yet. Phase 2 produces numbers, but only on a
+20-document **smoke-test** whose text is noise-free and whose renderer and
+parsers were written by the same person on the same day. Those numbers measure
+the harness, not the system, and are deliberately not promoted to this page.
+Real numbers begin at Phase 3 (synthetic corpus) and Phase 6 (locked real-test).
 
 ## Quick start
 

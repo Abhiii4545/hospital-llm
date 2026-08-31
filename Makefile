@@ -28,9 +28,7 @@ hooks:
 	$(UV) run pre-commit install
 
 eval:
-	@echo "make eval lands in phase 2, together with B0 and B1."
-	@echo "No model exists yet, and no results table exists yet. That is correct."
-	@exit 1
+	$(UV) run python -m reckon.eval.run
 
 clean:
 	rm -rf .pytest_cache .ruff_cache **/__pycache__

@@ -43,11 +43,7 @@ switch ($Target) {
     'imports' { Invoke-Uv @('run', 'lint-imports') }
     'lint'    { Invoke-Uv @('run', 'pre-commit', 'run', '--all-files') }
     'hooks'   { Invoke-Uv @('run', 'pre-commit', 'install') }
-    'eval' {
-        Write-Host 'make eval lands in phase 2, together with B0 and B1.'
-        Write-Host 'No model exists yet, and no results table exists yet. That is correct.'
-        exit 1
-    }
+    'eval'    { Invoke-Uv @('run', 'python', '-m', 'reckon.eval.run') }
     'clean' {
         Get-ChildItem -Recurse -Directory -Include '__pycache__', '.pytest_cache' |
             Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
