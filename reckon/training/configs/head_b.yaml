@@ -1,0 +1,39 @@
+# Head B - per-page line items. Trained FIRST: it is the harder task and the one
+# that decides whether the project works (brief section 2.1, A4).
+head: b
+base_model: naver-clova-ix/donut-base      # MIT
+manifest: data/synthetic/manifest.jsonl
+out_dir: outputs/head_b
+
+# 960x1280 portrait, not Donut's 2560x1920 default, which does not fit in 16GB.
+# The resolution ablation in phase 5 sweeps this.
+image_height: 1280
+image_width: 960
+
+# Set from the measured target-length distribution, not guessed. Run
+# PageDataset.target_lengths() first: silent truncation destroys line-item
+# recall without raising anything.
+max_length: 1024
+
+epochs: 3.0
+batch_size: 1
+grad_accum: 12
+lr: 3.0e-5
+warmup_ratio: 0.03
+weight_decay: 0.01
+max_grad_norm: 1.0
+
+fp16: true
+gradient_checkpointing: true
+optim_8bit: true
+
+seed: 1337
+checkpoint_every: 200
+keep_last: 2
+# Point one of these at Drive or the Hub before running on Colab. Local disk is
+# ephemeral and the session WILL die.
+drive_dir: null
+hub_repo: null
+push_to_hub: false
+
+log_every: 25

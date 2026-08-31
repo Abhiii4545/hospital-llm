@@ -13,6 +13,7 @@ source_modules =
     reckon.schema
 forbidden_modules =
     reckon.normalize
+    reckon.serialize
     reckon.provenance
     reckon.data
     reckon.models
@@ -27,6 +28,22 @@ type = forbidden
 source_modules =
     reckon.normalize
 forbidden_modules =
+    reckon.serialize
+    reckon.provenance
+    reckon.data
+    reckon.models
+    reckon.training
+    reckon.eval
+    reckon.adjudicate
+    reckon.serve
+
+[importlinter:contract:2b]
+name = Serialize is a leaf shared by training and serving
+type = forbidden
+source_modules =
+    reckon.serialize
+forbidden_modules =
+    reckon.normalize
     reckon.provenance
     reckon.data
     reckon.models
