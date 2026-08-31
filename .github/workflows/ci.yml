@@ -1,0 +1,47 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python 3.11
+        run: uv python install 3.11
+
+      - name: Sync locked environment
+        run: uv sync --locked --extra dev
+
+      # Layer boundaries are a build failure, not a review comment.
+      - name: Enforce import boundaries
+        run: uv run lint-imports
+
+      - name: Tests
+        run: uv run pytest
+
+      - name: Pre-commit (all files)
+        run: uv run pre-commit run --all-files --show-diff-on-failure
+
+      # Independent of .gitignore: proves nothing under data/real/ is tracked,
+      # even if someone force-added it in an earlier commit.
+      - name: Assert no real patient data is tracked
+        run: |
+          if git ls-files | grep -E '(^|/)data/real/'; then
+            echo "::error::tracked files found under data/real/"
+            exit 1
+          fi
+          echo "clean: nothing tracked under data/real/"

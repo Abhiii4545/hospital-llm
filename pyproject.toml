@@ -1,0 +1,33 @@
+[project]
+name = "reckon"
+version = "2.0.0.dev0"
+description = "RECKON v2 - document understanding for Indian hospital bills, with honest v1-vs-v2 evaluation"
+readme = "README.md"
+requires-python = ">=3.11,<3.12"
+license = { text = "MIT" }
+
+# Phase 1 runtime deps only. Later phases add their own; every addition is
+# licence-checked (MIT / Apache-2.0 / BSD only) before it lands here.
+dependencies = [
+    "pydantic>=2.9,<3",        # MIT
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3,<9",          # MIT
+    "import-linter>=2.1,<3",   # BSD-2-Clause
+    "pre-commit>=3.8,<5",      # MIT
+]
+
+[build-system]
+requires = ["hatchling"]       # MIT
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["reckon"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers --strict-config"
+xfail_strict = true
+filterwarnings = ["error"]

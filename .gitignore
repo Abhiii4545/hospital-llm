@@ -1,0 +1,31 @@
+data/real/
+# ^ LINE ONE, DELIBERATELY, and before any other file in this repo was written.
+#   Real patient documents never enter version control. See docs/PRIVACY.md.
+#   Enforced independently by tools/hooks/block_real_data.py, because `git add -f`
+#   overrides this file and a hook does not.
+data/real/**
+**/data/real/
+
+# --- python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# --- project artefacts (regenerable, and large) ---
+data/synthetic/
+data/cache/
+outputs/
+checkpoints/
+wandb/
+*.onnx
+*.safetensors
+*.ckpt
+*.pt
+
+# --- local ---
+.env
+.DS_Store
