@@ -252,6 +252,98 @@ holds the same environment also races. Both cost time to diagnose. Use
 `uv sync --extra dev` after any `uv add`, and invoke `.venv/Scripts/python.exe`
 directly when a long build is running.
 
+## Made during Phases 4-8
+
+### D26 - `serialize` is a top-level leaf, not part of `training`
+
+The Donut target format is needed by both training and serving, and contract 5
+forbids serving from importing training. A shared need between two layers that
+may not see each other is a leaf, so it sits beside `schema` and `normalize` with
+its own contract asserting it stays one.
+
+### D27 - The Donut target format is longer than JSON in characters
+
+It only wins once schema keys are registered as single tokens. Writing the
+token-budget test surfaced this: measured in characters the format is *worse*
+than plain JSON, and it is only cheaper in decoder steps because
+`donut_special_tokens()` is added to the tokenizer first. The test now measures
+decoder steps and pins that dependency, since skipping the tokenizer step would
+silently make the encoding a pessimisation.
+
+### D28 - Truncated output is salvaged, not discarded
+
+A decoder that runs one token short would otherwise lose an entire line item -
+the exact failure the two-head split exists to prevent. Both `parse_head_a` and
+`parse_head_b` recover a partial trailing element.
+
+### D29 - Continuation pages keep an empty Head A target
+
+They are not filtered out of the dataset. Training only on pages that *have* a
+header guarantees the model hallucinates one for every continuation page it meets.
+
+### D30 - Resume restores optimiser, scheduler, scaler and RNG - not just weights
+
+Weights alone silently restarts the epoch: the model re-sees data and the
+effective learning-rate schedule stops matching the recorded config. The run looks
+fine and is not reproducible. `CheckpointConfig` raises on an interval above 200
+steps, because on a free tier that is not a preference.
+
+### D31 - The latency table refuses to omit its accuracy column
+
+`render_table` prints "**not measured**" and a warning when a variant has no
+measured accuracy. A quantised model that is 3x faster and 8 points worse on
+`totals.net_amount` is not an improvement, and a bare latency table invites
+exactly that reading.
+
+### D32 - Rule matching is longest-needle-wins
+
+First-match-wins made attribution depend on rule order in the YAML:
+"Food & Beverages (attendant)" cited the attendant clause purely because it
+appears earlier. The deduction was right either way, but the *clause* was not -
+and the clause is what a policyholder is shown.
+
+### D33 - `balanced` and `complete` are separate
+
+Reconciliation conflated arithmetic with completeness, so a bill whose numbers
+added up perfectly looked broken because no page carried an insurance block.
+`balanced` is now about arithmetic; `complete` is about blocks and cross-page
+agreement.
+
+### D34 - Taxonomy slice keys are discovered, not hard-coded
+
+The first version looked for `layout` while the corpus calls it `template`, and
+silently produced no slice tables at all. Keys are now discovered from metadata,
+with identifier-like keys and single-valued keys excluded.
+
+### D35 - The review UI is a served HTML page, not a Next.js app
+
+**A deliberate scope reduction, stated rather than hidden.** The brief specifies a
+Next.js review UI as a separate build. What ships is a single self-contained page
+served by FastAPI: it exercises the same endpoints, logs corrections to the same
+place, and needs no build step or Node toolchain to run the CPU demo. A Next.js
+front end remains genuinely unbuilt.
+
+### D36 - Generated artefacts are byte-stable
+
+The eval report and the Colab notebook are both produced by generators, and both
+were being rewritten by pre-commit hooks (trailing whitespace, missing final
+newline) so that regenerating produced a file differing from the committed one.
+Both generators now emit hook-clean output.
+
+### D37 - What is deliberately NOT done
+
+Recorded so the gaps are legible rather than assumed complete:
+
+* **No trained model.** Training requires a GPU session that has not been run.
+  Consequently no results table anywhere, and the synthetic-to-real gap - this
+  project's headline number - is unmeasured.
+* **No real corpus.** `real-dev` and `real-test` do not exist, so Phase 6's locked
+  read and Phase 7's taxonomy over 30 real failures have not happened. The tooling
+  for both is built and tested.
+* **B2 is untrained.** Its label scheme and decoder are tested; the model is not.
+* **PaddleOCR is not installed**, so B1 has never run on an actual image - only on
+  perfect text. Its mini-set score is an upper bound it will not reach.
+
 ## Dependencies so far
 
 | Package | Licence | Why |
@@ -270,6 +362,9 @@ directly when a long build is running.
 | Playwright | Apache-2.0 | Headless Chromium rendering |
 | Pillow | MIT-CMU | Raster operations, contact sheet |
 | Augraphy | MIT | Scan realism |
+| FastAPI | MIT | Serving (optional extra) |
+| uvicorn | BSD-3-Clause | ASGI server (optional extra) |
+| httpx / httpx2 | BSD-3-Clause | Test client (optional extra) |
 
 Deferred, with reasons: `paddleocr` + `paddlepaddle` (Apache-2.0, ~1GB, needed
 only when B1 runs on images); `zss` / `apted` for tree edit distance (licence not
