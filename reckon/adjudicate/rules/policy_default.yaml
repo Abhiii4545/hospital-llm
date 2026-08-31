@@ -1,0 +1,55 @@
+# Default policy terms. Configurable per claim; these are the fallbacks.
+#
+# Room-rent capping is the one that compounds: exceeding the cap triggers a
+# PROPORTIONATE deduction across associated charges, so a small extraction error
+# in room rent is multiplied into the final payable amount. That sensitivity is
+# quantified in reckon/eval/sensitivity.py, and it is the reason room_rent
+# accuracy matters more than its share of the bill suggests.
+
+version: 1
+
+policy:
+  sum_insured: 500000
+
+  room_rent:
+    # Cap expressed as a percentage of sum insured per day, the common form.
+    cap_percent_of_sum_insured_per_day: 1.0
+    # Charges that scale with room class and are therefore proportionately
+    # reduced when the room cap is breached. Consumables and pharmacy are NOT
+    # here: they do not vary with room class, and most policies exclude them
+    # from proportionate deduction.
+    proportionate_categories:
+      - room_rent
+      - nursing
+      - professional_fees
+      - surgery
+      - equipment
+    # ICU is usually capped separately and more generously.
+    icu_cap_percent_of_sum_insured_per_day: 2.0
+
+  co_pay_percent: 10.0
+
+  deductible: 0
+
+  sub_limits:
+    # Procedure-level caps, matched against the line-item description.
+    - match: cataract
+      cap: 40000
+      clause: "Policy schedule - cataract sub-limit per eye"
+    - match: total knee replacement
+      cap: 250000
+      clause: "Policy schedule - joint replacement sub-limit"
+    - match: angioplasty
+      cap: 200000
+      clause: "Policy schedule - cardiac intervention sub-limit"
+
+  # Order matters and is asserted in the tests. Non-payables come out first,
+  # then sub-limits, then room-rent proportionate deduction, then the
+  # deductible, and co-pay applies last to what remains. Applying co-pay before
+  # the deductible would change the payable amount.
+  order:
+    - non_payable
+    - sub_limits
+    - room_rent_cap
+    - deductible
+    - co_pay

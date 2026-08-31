@@ -1,0 +1,129 @@
+# IRDAI List I - Non-medical / non-payable expenses.
+#
+# Encoded from the "Optional Items" and "Non-Medical Expenses" list annexed to
+# the IRDAI standardisation guidelines on claim documentation. Every rule carries
+# a citation so a deduction can be traced back to the clause that produced it.
+#
+# This file is DATA, not code. Adding a hospital's local variant of an item name
+# belongs here, not in engine.py, and does not require a code change or a
+# redeploy.
+#
+# `match` entries are matched case-insensitively as substrings against the
+# normalized line-item description. Keep them specific: "kit" would match
+# "Nebuliser Kit" (payable when clinically used) as well as "Toiletries Kit".
+
+version: 1
+source: IRDAI List I - items for which optional coverage / no coverage applies
+note: >
+  List I items are non-payable in a standard indemnity policy. A policy that
+  explicitly covers an item overrides this file; that override belongs in the
+  policy rule set, not here.
+
+rules:
+  - id: LIST_I_TOILETRIES
+    clause: "List I, item 1-12 (toiletries and personal comfort)"
+    category_hint: non_medical
+    reason: "Toiletries and personal comfort items are non-payable (IRDAI List I)"
+    match:
+      - toiletr
+      - tooth paste
+      - toothpaste
+      - tooth brush
+      - toothbrush
+      - soap
+      - shampoo
+      - hair oil
+      - comb
+      - powder
+      - talcum
+      - shaving
+      - razor
+      - slippers
+      - sanitary pad
+
+  - id: LIST_I_ATTENDANT
+    clause: "List I, item 13-18 (attendant and ayah charges)"
+    category_hint: non_medical
+    reason: "Attendant / ayah charges are non-payable (IRDAI List I)"
+    match:
+      - attendant
+      - ayah charge
+      - bystander
+      - guest bed
+      - extra bed for attendant
+
+  - id: LIST_I_FOOD_BEVERAGE
+    clause: "List I (food and beverages other than patient diet)"
+    category_hint: non_medical
+    reason: "Food and beverages for persons other than the patient are non-payable (IRDAI List I)"
+    match:
+      - food and beverage
+      - food & beverage
+      - beverage
+      - cafeteria
+      - canteen
+      - visitor meal
+
+  - id: LIST_I_COMMUNICATION
+    clause: "List I (telephone, television and similar amenities)"
+    category_hint: non_medical
+    reason: "Telephone, television and similar amenities are non-payable (IRDAI List I)"
+    match:
+      - telephone
+      - television
+      - " tv "
+      - internet charge
+      - wifi
+      - newspaper
+
+  - id: LIST_I_LAUNDRY
+    clause: "List I (laundry and housekeeping amenities)"
+    category_hint: non_medical
+    reason: "Laundry charges are non-payable (IRDAI List I)"
+    match:
+      - laundry
+      - washing charge
+
+  - id: LIST_I_ADMIN_RECORDS
+    clause: "List I (administrative and record-keeping charges)"
+    category_hint: administrative
+    reason: "Administrative and record charges are non-payable (IRDAI List I)"
+    match:
+      - registration fee
+      - registration charge
+      - medical records charge
+      - record charge
+      - documentation charge
+      - discharge summary charge
+      - file charge
+      - admission fee
+      - admission charge
+
+  - id: LIST_I_SERVICE_CHARGES
+    clause: "List I (service and surcharge items)"
+    category_hint: administrative
+    reason: "Service charges and surcharges are non-payable (IRDAI List I)"
+    match:
+      - service charge
+      - surcharge
+      - convenience fee
+
+  - id: LIST_I_CONSUMABLE_SUNDRY
+    clause: "List I (sundry non-medical consumables)"
+    category_hint: non_medical
+    reason: "Sundry non-medical consumables are non-payable (IRDAI List I)"
+    match:
+      - mineral water
+      - carry bag
+      - patient kit
+      - admission kit
+      - birth certificate
+      - death certificate
+
+  - id: LIST_I_AMBULANCE_NON_EMERGENCY
+    clause: "List I (non-emergency transport)"
+    category_hint: non_medical
+    reason: "Non-emergency ambulance transport is non-payable (IRDAI List I)"
+    match:
+      - ambulance charges (non-emergency)
+      - non-emergency ambulance
