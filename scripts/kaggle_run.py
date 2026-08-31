@@ -5,11 +5,12 @@ you. This script never reads, prints or transmits the token itself - it only
 checks that the file exists and lets the official CLI use it, the same way
 `git push` used the Windows credential manager.
 
-    # one-time, done by you:
-    #   Kaggle -> Settings -> API -> Create New Token
-    #   save the downloaded kaggle.json to ~/.kaggle/kaggle.json
+    # one-time, done by YOU - never paste a token into a chat:
+    #   Kaggle -> Settings -> API -> Create New Token, then either
+    #     echo <TOKEN> > ~/.kaggle/access_token   (newer KGAT_ style)
+    #     mv kaggle.json ~/.kaggle/kaggle.json     (legacy style)
 
-    python scripts/kaggle_run.py --dataset <owner>/<dataset-slug>
+    python scripts/kaggle_run.py --dataset <owner>/<slug> --username <you>
     python scripts/kaggle_run.py --status
     python scripts/kaggle_run.py --fetch
 
@@ -31,7 +32,24 @@ from pathlib import Path
 
 KERNEL_DIR = Path("build/kaggle_kernel")
 NOTEBOOK = Path("notebooks/train_kaggle.ipynb")
-TOKEN = Path.home() / ".kaggle" / "kaggle.json"
+
+#: Kaggle has two auth styles in the wild and the CLI accepts either.
+#: - legacy: ~/.kaggle/kaggle.json, a JSON object with username + key
+#: - current: ~/.kaggle/access_token, a bare KGAT_... string (no username in it)
+#:
+#: Resolved by FUNCTION, not as a module constant. `Path.home()` at import time
+#: cannot be pointed elsewhere for a test, and a credential check that cannot be
+#: tested is a credential check nobody has verified.
+def _kaggle_dir() -> Path:
+    return Path(os.environ.get("KAGGLE_CONFIG_DIR") or (Path.home() / ".kaggle"))
+
+
+def legacy_token_path() -> Path:
+    return _kaggle_dir() / "kaggle.json"
+
+
+def access_token_path() -> Path:
+    return _kaggle_dir() / "access_token"
 
 
 def _fail(message: str) -> None:
@@ -39,22 +57,57 @@ def _fail(message: str) -> None:
     raise SystemExit(1)
 
 
-def check_credentials() -> str:
-    """Confirm the token exists and return the username. The key is never read."""
-    if not TOKEN.exists():
+def check_credentials(username_arg: str | None = None) -> str:
+    """Confirm credentials exist and determine the username.
+
+    The secret itself is never read, printed or transmitted by this script - only
+    its presence is checked, and the official CLI reads the file. That is also why
+    the newer `access_token` style needs --username: the username is simply not in
+    that file, and the alternative would be parsing a file whose entire contents
+    are a live key.
+    """
+    has_legacy = legacy_token_path().exists()
+    has_access = access_token_path().exists()
+    has_env = bool(
+        os.environ.get("KAGGLE_API_TOKEN")
+        or (os.environ.get("KAGGLE_USERNAME") and os.environ.get("KAGGLE_KEY"))
+    )
+
+    if not (has_legacy or has_access or has_env):
         _fail(
-            "No Kaggle token found at ~/.kaggle/kaggle.json\n\n"
-            "  1. Kaggle -> your avatar -> Settings -> API -> Create New Token\n"
-            "  2. Move the downloaded kaggle.json to ~/.kaggle/kaggle.json\n\n"
-            "This script never reads the key; the official CLI uses the file."
+            "No Kaggle credentials found.\n\n"
+            "Run ONE of these YOURSELF. Do not paste a token into a chat - if you\n"
+            "already have, expire it on the Kaggle API page and make a new one.\n\n"
+            "  Newer token (KGAT_...):\n"
+            "    mkdir -p ~/.kaggle\n"
+            "    echo <YOUR_TOKEN> > ~/.kaggle/access_token\n"
+            "    chmod 600 ~/.kaggle/access_token\n"
+            "    then re-run with --username <your-kaggle-username>\n\n"
+            "  Legacy kaggle.json:\n"
+            "    move the downloaded kaggle.json to ~/.kaggle/kaggle.json\n\n"
+            "This script never reads the key; the CLI does."
         )
-    try:
-        username = json.loads(TOKEN.read_text(encoding="utf-8")).get("username")
-    except Exception:                                      # noqa: BLE001
-        _fail("~/.kaggle/kaggle.json is not valid JSON.")
-    if not username:
-        _fail("~/.kaggle/kaggle.json has no 'username' field.")
-    return username
+
+    if username_arg:
+        return username_arg
+    if os.environ.get("KAGGLE_USERNAME"):
+        return os.environ["KAGGLE_USERNAME"]
+    if has_legacy:
+        try:
+            username = json.loads(
+                legacy_token_path().read_text(encoding="utf-8")
+            ).get("username")
+        except Exception:                                  # noqa: BLE001
+            _fail("~/.kaggle/kaggle.json is not valid JSON.")
+        else:
+            if username:
+                return username
+
+    _fail(
+        "Credentials found, but an access_token file does not carry a username.\n"
+        "Re-run with --username <your-kaggle-username>."
+    )
+    return ""                                              # unreachable
 
 
 def ensure_cli() -> None:
@@ -103,9 +156,11 @@ def main() -> int:
     parser.add_argument("--slug", default="reckon-v2-train-head-b")
     parser.add_argument("--status", action="store_true")
     parser.add_argument("--fetch", action="store_true")
+    parser.add_argument("--username", default=None,
+                        help="required with the newer access_token style")
     args = parser.parse_args()
 
-    username = check_credentials()
+    username = check_credentials(args.username)
     ensure_cli()
     kernel = f"{username}/{args.slug}"
 
