@@ -25,6 +25,13 @@ dev = [
     "import-linter>=2.1,<3",   # BSD-2-Clause
     "pre-commit>=3.8,<5",      # MIT
 ]
+serve = [
+    "fastapi>=0.115,<1",
+    "httpx>=0.27",
+    "httpx2>=2.12.0",
+    "python-multipart>=0.0.9,<1",
+    "uvicorn>=0.30,<1",
+]
 
 [build-system]
 requires = ["hatchling"]       # MIT
