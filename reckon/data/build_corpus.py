@@ -201,6 +201,12 @@ def build(
                     "sha256": _sha256(png),
                     "split": split,
                     "quality": quality,
+                    # What was actually APPLIED. A page that failed the
+                    # legibility guard kept its clean render, so labelling it
+                    # `heavy` would put a pristine image in the heavy slice and
+                    # inflate exactly the number that slice exists to report.
+                    # Slice analysis should key off this, not `quality`.
+                    "quality_effective": quality if legible else "clean",
                     "legible": legible,
                     "ink_contrast": round(ink_contrast(augmented), 1),
                     "edge_energy": round(edge_energy(augmented), 1),
