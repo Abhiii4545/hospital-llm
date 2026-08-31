@@ -1,0 +1,21 @@
+{
+  "title": "RECKON v2 - Synthetic Indian Hospital Bills (10k pages)",
+  "id": "YOUR_KAGGLE_USERNAME/reckon-v2-synthetic-hospital-bills",
+  "subtitle": "10,212 generated bill pages, 21 layouts. No real patient data.",
+  "description": "Fully SYNTHETIC corpus of Indian hospital bills and discharge summaries, generated for the RECKON v2 document-understanding project (https://github.com/Abhiii4545/hospital-llm).\n\nCONTAINS NO REAL PATIENT DATA. Every value is generated. Hospital names are invented and a test asserts no real hospital brand can appear. No real logo, trademark or letterhead is reproduced. GSTINs are structurally valid with correct check digits but correspond to no registered entity.\n\nCONTENTS\n- 10,212 page images (JPEG, ~794x1123 before augmentation)\n- One JSON per page with per-head extraction targets: head_a (hospital, patient, insurance, totals) and head_b (line_items for that page)\n- manifest.jsonl with a SHA-256 per page, split, layout, scan quality and messiness labels\n- corpus_hash.txt, an order-independent hash of the whole corpus\n\nSTRUCTURE\n- 21 layouts across 7 archetypes: corporate itemised, grouped-with-subtotals, sparse nursing home, minimal bilingual government, diagnostic test panel, pharmacy sub-bill with batch/expiry, discharge summary with billing annexure\n- Diversity is STRUCTURAL, not cosmetic: column order, header placement, totals placement, table style and rows-per-page all vary. Column order in particular, because that is what a fixed-order regex cannot survive\n- Bilingual headers in Telugu and Devanagari, restricted to states where those scripts are actually used\n- Splits: train 8,163 / val 1,015 / synth_test 1,034, stratified by layout so every layout appears in every split\n\nSCAN QUALITY (Augraphy)\nclean 20% / light 35% / medium 30% / heavy 15%. Non-uniform because real claim intake is. Pages failing an Otsu-based legibility guard fall back to the clean render; the manifest records both the requested `quality` and the applied `quality_effective`, and slice analysis should key off the latter.\n\nDELIBERATE MESSINESS\nMissing UHID 8%, misaligned totals 5%, a row reprinted across a page break 12%, handwritten correction 6%. The duplicated row is printed but deliberately absent from the target - the assembly layer has to notice it.\n\nGROUND TRUTH\nThe label is the exact string that is printed. Formatting and truth come from one code path, so a label cannot disagree with the pixels.\n\nLIMITATIONS\n- No true handwriting; corrections are rendered in a script font\n- Only Telugu and Devanagari bilingual headers\n- No real paper; every degradation is simulated\n- Region weighting, ward distribution and tariffs are plausible guesses, not census or real rates\n- Synthetic-test performance is an optimistic bound and is NOT a claim about real documents\n\nRegenerable deterministically from a seed: see reckon/data/build_corpus.py in the repository. Full datasheet: docs/DATASHEET.md.",
+  "licenses": [
+    {
+      "name": "CC0-1.0"
+    }
+  ],
+  "keywords": [
+    "healthcare",
+    "computer-vision",
+    "nlp",
+    "india",
+    "synthetic",
+    "document-understanding",
+    "ocr",
+    "insurance"
+  ]
+}
