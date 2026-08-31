@@ -1,5 +1,7 @@
 # RECKON v2
 
+[![repo](https://img.shields.io/badge/github-Abhiii4545%2Fhospital--llm-blue)](https://github.com/Abhiii4545/hospital-llm)
+
 Document understanding for Indian hospital bills and discharge summaries, with a
 deterministic IRDAI adjudication layer on top.
 

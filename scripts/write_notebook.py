@@ -54,13 +54,13 @@ print(subprocess.run(["nvidia-smi"], capture_output=True, text=True).stdout or "
 pinned versions from `pyproject.toml`.
 """),
     code("""
-REPO_URL = "https://github.com/YOUR_USERNAME/reckon-v2.git"   # <- set this
+REPO_URL = "https://github.com/Abhiii4545/hospital-llm.git"
 BRANCH   = "main"
 
 import os, subprocess, sys
-if not os.path.exists("reckon-v2"):
-    subprocess.run(["git", "clone", "--branch", BRANCH, REPO_URL, "reckon-v2"], check=True)
-%cd reckon-v2
+if not os.path.exists("hospital-llm"):
+    subprocess.run(["git", "clone", "--branch", BRANCH, REPO_URL, "hospital-llm"], check=True)
+%cd hospital-llm
 
 !pip -q install -e .
 !pip -q install "torch" "transformers>=4.44,<5" "accelerate" "bitsandbytes" "sentencepiece"
