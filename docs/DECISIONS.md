@@ -183,6 +183,75 @@ history does not record that. An attempt to rewrite those commits was blocked by
 a tooling guard, and rewriting history was not re-attempted without an explicit
 instruction. Recorded here rather than left silent.
 
+## Made during Phase 3
+
+### D18 - Playwright instead of WeasyPrint
+
+WeasyPrint is the brief's first choice, but it needs GTK/Pango native libraries
+that are not installed on this Windows machine and cannot be pip-installed. The
+brief names Playwright (Apache-2.0) as the alternative, so headless Chromium
+renders the templates. Chromium also shapes Telugu and Devanagari correctly,
+which the bilingual layouts require.
+
+### D19 - Layout diversity is structural, and asserted to be
+
+21 layouts across the brief's 7 archetypes. What varies is column ORDER, header
+placement, totals placement, table style and rows-per-page - not typography. A
+test asserts that both `rate, quantity` and `quantity, rate` orderings exist,
+because column order is precisely what a fixed-order regex cannot survive and
+therefore what the corpus has to contain.
+
+### D20 - Ground truth is the string that is printed
+
+Formatting and truth come out of one code path in
+`generators/document.py`. It is structurally impossible for a label to disagree
+with the pixels. Group headings and category subtotals are inserted into a copy
+of the rows for display only; a subtotal row scored as a line item would be a
+label bug across every grouped layout.
+
+### D21 - The `heavy` augmentation bucket was too destructive, and the metric that should have caught it was wrong
+
+The first `heavy` pipeline (Letterpress + full-range LightingGradient + dense
+Moire) produced pages illegible to a human. That is label noise, not difficulty:
+15% of the corpus would have been teaching the model to hallucinate.
+
+Worse, the first legibility metric was `p50 - p5`, which on a 95%-white page
+measures histogram spread rather than ink-versus-paper, and ranked the clean
+render *below* a heavily degraded one. It is now `p90 - p2` plus variance of the
+Laplacian, since a blurred page can keep its dynamic range while losing every
+glyph edge. Both thresholds are calibrated against a deliberately destroyed
+control, and a test asserts the guards fail on it - a guard that has never
+rejected anything is not a guard.
+
+### D22 - Stratify by layout before sampling, not randomly
+
+Split assignment is round-robin over layouts, so all 21 appear in train, val and
+synthetic-test in proportion. A random split at these sizes would leave some
+layout absent from the test set, making "the model fails on layout 14"
+unmeasurable. The contact sheet samples stratified by layout x quality for the
+same reason: 100 uniform draws from 10,000 pages would miss whole cells, and
+those are the cells most likely to be broken.
+
+### D23 - A duplicated page-break row is printed but is not in the target
+
+The 12% duplicate-row condition reprints the previous page's last row. Ground
+truth keeps one copy. The assembly layer has to notice the repeat; training the
+model to emit it twice would remove the very signal Phase 5 needs.
+
+### D24 - Corpus size traded against wall-clock
+
+Throughput is ~0.8 pages/sec/worker on this machine (render + augment), so
+10,000 pages is ~50 minutes at 6 workers. That is the reason the target sits at
+the lower end of the brief's 8,000-12,000 band rather than the top.
+
+### D25 - `uv add` drops the dev extra
+
+`uv add` re-syncs with default extras only, silently uninstalling pytest,
+import-linter and pre-commit. Running `uv run pytest` while a background build
+holds the same environment also races. Both cost time to diagnose. Use
+`uv sync --extra dev` after any `uv add`, and invoke `.venv/Scripts/python.exe`
+directly when a long build is running.
+
 ## Dependencies so far
 
 | Package | Licence | Why |
@@ -197,8 +266,14 @@ instruction. Recorded here rather than left silent.
 | numpy | BSD-3-Clause | Cost matrices (transitive via scipy) |
 | PyYAML | MIT | Configs and rule files |
 
-Deferred, with reasons: `paddleocr` + `paddlepaddle` (Apache-2.0, ~1GB, no page
-images until Phase 3); `zss` / `apted` for tree edit distance (licence not
-confirmable - implemented instead).
+| Jinja2 | BSD-3-Clause | Layout templates |
+| Playwright | Apache-2.0 | Headless Chromium rendering |
+| Pillow | MIT-CMU | Raster operations, contact sheet |
+| Augraphy | MIT | Scan realism |
+
+Deferred, with reasons: `paddleocr` + `paddlepaddle` (Apache-2.0, ~1GB, needed
+only when B1 runs on images); `zss` / `apted` for tree edit distance (licence not
+confirmable - implemented instead); WeasyPrint (BSD-3, unusable without GTK
+natives on this machine).
 
 No dependency is added without its licence stated. MIT / Apache-2.0 / BSD only.

@@ -22,7 +22,7 @@ between synthetic-test and real-test performance, not the synthetic number alone
 |------:|-------|-------|
 | 1 | Skeleton, schema, normalizers, privacy hooks, CI | complete |
 | 2 | Eval harness + B0 (v1 rules) + B1 (OCR heuristics) | **complete** |
-| 3 | Synthetic corpus, 8–12k pages | not started |
+| 3 | Synthetic corpus, 8–12k pages | **complete** |
 | 4 | Head B — line items | not started |
 | 5 | Head A + assembly + ablations | not started |
 | 6 | B2 (LiLT) + first locked real-test read | not started |

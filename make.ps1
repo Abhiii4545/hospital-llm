@@ -4,7 +4,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Position = 0)]
-    [ValidateSet('help', 'setup', 'test', 'lint', 'imports', 'hooks', 'eval', 'clean')]
+    [ValidateSet('help', 'setup', 'test', 'lint', 'imports', 'hooks', 'eval', 'corpus', 'contact-sheet', 'clean')]
     [string]$Target = 'help'
 )
 
@@ -36,7 +36,9 @@ switch ($Target) {
         Write-Host 'lint    - run all pre-commit hooks over every file'
         Write-Host 'imports - check layer boundaries with import-linter'
         Write-Host 'hooks   - install the git pre-commit hooks'
-        Write-Host 'eval    - produce reports/eval_<git-sha>.md (phase 2)'
+        Write-Host 'eval    - produce reports/eval_<git-sha>.md'
+        Write-Host 'corpus  - build the synthetic corpus (long)'
+        Write-Host 'contact-sheet - render 100 sampled pages for review'
     }
     'setup'   { Invoke-Uv @('sync', '--extra', 'dev') }
     'test'    { Invoke-Uv @('run', 'pytest') }
@@ -44,6 +46,8 @@ switch ($Target) {
     'lint'    { Invoke-Uv @('run', 'pre-commit', 'run', '--all-files') }
     'hooks'   { Invoke-Uv @('run', 'pre-commit', 'install') }
     'eval'    { Invoke-Uv @('run', 'python', '-m', 'reckon.eval.run') }
+    'corpus'  { Invoke-Uv @('run', 'python', '-m', 'reckon.data.build_corpus', '--documents', '6300', '--workers', '6') }
+    'contact-sheet' { Invoke-Uv @('run', 'python', '-m', 'reckon.data.contact_sheet') }
     'clean' {
         Get-ChildItem -Recurse -Directory -Include '__pycache__', '.pytest_cache' |
             Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
