@@ -39,3 +39,6 @@ reports/*-dirty.md
 # scratch renders from development
 data/_smoke/
 pw_test.png
+
+# contact sheet is ~10MB and regenerable from the corpus
+reports/contact_sheet*.png
