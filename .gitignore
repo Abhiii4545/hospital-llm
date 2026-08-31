@@ -35,3 +35,7 @@ data/mini/
 
 # reports generated from a dirty tree are not reproducible, so not committed
 reports/*-dirty.md
+
+# scratch renders from development
+data/_smoke/
+pw_test.png
